@@ -1057,7 +1057,12 @@ document.addEventListener("DOMContentLoaded", () => {
       card.innerHTML = `
                 <div class="history-card-header">
                     <h4>${h.monthYear}</h4>
-                    <i data-lucide="check-circle" style="color: var(--success)"></i>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <i data-lucide="check-circle" style="color: var(--success)"></i>
+                        <button class="btn-icon" onclick="deleteHistory('${h.id}')" title="Excluir fechamento" style="background:none; border:none; cursor:pointer; padding:5px; display:flex; align-items:center; justify-content:center; transition: transform 0.2s;">
+                            <i data-lucide="trash-2" style="width:18px;height:18px;color:var(--danger);"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="history-stats">
                     <div class="history-stat-row">
@@ -1078,6 +1083,23 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     lucide.createIcons();
   }
+
+  window.deleteHistory = async (id) => {
+    const user = auth.currentUser;
+    if (!user) return;
+    if (confirm("Deseja realmente excluir este fechamento permanentemente?")) {
+      try {
+        showToast("Excluindo fechamento...", "info");
+        await remove(ref(db, `users/${user.uid}/history/${id}`));
+        state.history = state.history.filter(h => h.id !== id);
+        renderHistory();
+        showToast("Fechamento removido com sucesso!", "success");
+      } catch (err) {
+        console.error(err);
+        showToast("Erro ao excluir fechamento do Firebase", "error");
+      }
+    }
+  };
 
   async function closeMonth() {
     const user = auth.currentUser;
@@ -1511,67 +1533,110 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function initSimulation() {
-    const ctx = document.getElementById("simulationChart").getContext("2d");
-    if (simChart) simChart.destroy();
+    try {
+      console.log("Iniciando simulação financeira...");
+      const canvas = document.getElementById("simulationChart");
+      if (!canvas) {
+        console.error("Elemento simulationChart não encontrado!");
+        return;
+      }
+      
+      const ctx = canvas.getContext("2d");
+      if (simChart) {
+        simChart.destroy();
+        simChart = null;
+      }
 
-    const multiplier = 1 + parseInt(simRange.value) / 100;
-    const avgIncome = state.salary + state.transactions
-      .filter((t) => t.type === "income")
-      .reduce((acc, t) => acc + t.amount, 0);
-    const avgExpense = state.transactions
-      .filter((t) => t.type === "expense" && t.confirmed !== false)
-      .reduce((acc, t) => acc + t.amount, 0);
+      const multiplier = 1 + (parseInt(simRange.value) || 0) / 100;
+      
+      // Safe calculations with Number() conversion
+      const avgIncome = Number(state.salary || 0) + (state.transactions || [])
+        .filter((t) => t.type === "income")
+        .reduce((acc, t) => acc + Number(t.amount || 0), 0);
+        
+      const avgExpense = (state.transactions || [])
+        .filter((t) => t.type === "expense" && t.confirmed !== false)
+        .reduce((acc, t) => acc + Number(t.amount || 0), 0);
 
-    const adjustedExpense = avgExpense * multiplier;
-    const monthlyDiff = avgIncome - adjustedExpense;
+      const adjustedExpense = avgExpense * multiplier;
+      const monthlyDiff = avgIncome - adjustedExpense;
 
-    document.getElementById("simulation-summary").style.display = "block";
-    document.getElementById("sim-avg-income").textContent = formatCurrency(avgIncome);
-    document.getElementById("sim-adj-expense").textContent = formatCurrency(adjustedExpense);
-    document.getElementById("sim-monthly-diff").textContent = formatCurrency(monthlyDiff);
-    document.getElementById("sim-monthly-diff").style.color = monthlyDiff >= 0 ? "var(--success)" : "var(--danger)";
+      const summary = document.getElementById("simulation-summary");
+      if (summary) {
+        summary.style.display = "block";
+        document.getElementById("sim-avg-income").textContent = formatCurrency(avgIncome);
+        document.getElementById("sim-adj-expense").textContent = formatCurrency(adjustedExpense);
+        document.getElementById("sim-monthly-diff").textContent = formatCurrency(monthlyDiff);
+        document.getElementById("sim-monthly-diff").style.color = monthlyDiff >= 0 ? "var(--success)" : "var(--danger)";
+      }
 
-    const labels = [
-      "Mês 1", "Mês 2", "Mês 3", "Mês 4", "Mês 5", "Mês 6",
-      "Mês 7", "Mês 8", "Mês 9", "Mês 10", "Mês 11", "Mês 12",
-    ];
-    const simulatedBalance = [];
-    let currentBalance = avgIncome - avgExpense * multiplier;
+      const labels = [
+        "Mês 1", "Mês 2", "Mês 3", "Mês 4", "Mês 5", "Mês 6",
+        "Mês 7", "Mês 8", "Mês 9", "Mês 10", "Mês 11", "Mês 12",
+      ];
+      
+      const simulatedBalance = [];
+      // Current balance considering the adjusted variables
+      for (let i = 0; i < 12; i++) {
+        simulatedBalance.push(monthlyDiff * (i + 1));
+      }
 
-    for (let i = 0; i < 12; i++) {
-      simulatedBalance.push(currentBalance * (i + 1));
-    }
+      if (typeof Chart === 'undefined') {
+        console.error("Biblioteca Chart.js não carregada!");
+        showToast("Erro: Biblioteca de gráficos não carregada.", "error");
+        return;
+      }
 
-    simChart = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: labels,
-        datasets: [
-          {
-            label: "Lucro Acumulado Projetado",
-            data: simulatedBalance,
-            backgroundColor: simulatedBalance.map((v) =>
-              v >= 0 ? "rgba(34, 197, 94, 0.4)" : "rgba(239, 68, 68, 0.4)",
-            ),
-            borderColor: simulatedBalance.map((v) =>
-              v >= 0 ? "#22c55e" : "#ef4444",
-            ),
-            borderWidth: 1,
-            borderRadius: 5,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        scales: {
-          y: {
-            grid: { color: "rgba(255,255,255,0.05)" },
-            ticks: { color: "#94a3b8" },
-          },
-          x: { grid: { display: false }, ticks: { color: "#94a3b8" } },
+      simChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: "Lucro Acumulado Projetado (R$)",
+              data: simulatedBalance,
+              backgroundColor: simulatedBalance.map((v) =>
+                v >= 0 ? "rgba(34, 197, 94, 0.4)" : "rgba(239, 68, 68, 0.4)",
+              ),
+              borderColor: simulatedBalance.map((v) =>
+                v >= 0 ? "#22c55e" : "#ef4444",
+              ),
+              borderWidth: 1,
+              borderRadius: 6,
+            },
+          ],
         },
-      },
-    });
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: (context) => ` Acumulado: ${formatCurrency(context.parsed.y)}`
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: "rgba(255,255,255,0.05)" },
+              ticks: { 
+                color: "#94a3b8",
+                callback: (value) => formatCurrency(value)
+              },
+            },
+            x: { 
+              grid: { display: false }, 
+              ticks: { color: "#94a3b8" } 
+            },
+          },
+        },
+      });
+      console.log("Simulação renderizada com sucesso.");
+    } catch (err) {
+      console.error("Erro na simulação:", err);
+      showToast("Não foi possível gerar a simulação. Verifique seus dados.", "error");
+    }
   }
 
   // ===================================
@@ -2242,34 +2307,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let chatConversations = [];        // Array of all saved conversations
 
   // --- Load / Save conversations from localStorage ---
-  function loadAllConversations() {
-    const user = Auth.getCurrentUser();
-    if (!user) return;
-    const saved = localStorage.getItem(Auth.getUserDataKey(user.id, "chatConversations"));
-    if (saved) {
-      try { chatConversations = JSON.parse(saved); } catch (e) { chatConversations = []; }
-    } else {
-      chatConversations = [];
-    }
-    // Migrate old single chatHistory if exists
-    const oldHistory = localStorage.getItem(Auth.getUserDataKey(user.id, "chatHistory"));
-    if (oldHistory) {
-      try {
-        const oldMessages = JSON.parse(oldHistory);
-        if (oldMessages.length > 0) {
-          const firstUserMsg = oldMessages.find(m => m.role === "user");
-          chatConversations.push({
-            id: Date.now(),
-            title: firstUserMsg ? firstUserMsg.parts[0].text.substring(0, 60) : "Conversa importada",
-            date: new Date().toISOString(),
-            messages: oldMessages
-          });
-          saveAllConversations();
-        }
-        localStorage.removeItem(Auth.getUserDataKey(user.id, "chatHistory"));
-      } catch (e) { /* ignore */ }
-    }
-  }
 
   async function saveAllConversations() {
     const user = auth.currentUser;
@@ -2500,7 +2537,6 @@ document.addEventListener("DOMContentLoaded", () => {
       showToast("Por favor, configure sua chave do Gemini primeiro na seção acima!", "warning");
       return;
     }
-    loadAllConversations();
     loadActiveConversation();
     renderChatFromHistory();
     aiChatOverlay.classList.add("active");
@@ -2529,7 +2565,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- History Modal ---
   openChatHistoryModalBtn.addEventListener("click", () => {
-    loadAllConversations();
     renderConversationsList();
     chatHistoryModal.classList.add("active");
     lucide.createIcons();
@@ -2670,6 +2705,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   goalForm.addEventListener("submit", async (e) => {
     e.preventDefault();
+    const user = auth.currentUser;
+    if (!user) return;
     const name = document.getElementById("goal-name").value;
     const target = parseFloat(document.getElementById("goal-target").value) || 0;
     const current = parseFloat(document.getElementById("goal-current").value) || 0;

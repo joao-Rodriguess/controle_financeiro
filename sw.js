@@ -1,4 +1,4 @@
-const CACHE_NAME = 'finai-cache-v3';
+const CACHE_NAME = 'finai-cache-v10';
 const urlsToCache = [
     './',
     './index.html',
