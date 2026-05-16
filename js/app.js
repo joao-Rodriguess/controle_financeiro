@@ -7,15 +7,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ===================================
   // MOBILE DEVICE DETECTION
-  // Hide Google Sign-In on mobile (not supported via local IP)
   // ===================================
   const isMobileDevice = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent)
     || (navigator.maxTouchPoints > 1 && window.innerWidth < 1024);
 
   if (isMobileDevice) {
-    document.querySelectorAll('.auth-divider, .google-btn-wrapper').forEach(el => {
-      el.style.display = 'none';
-    });
     document.body.classList.add('mobile-device');
   }
 
@@ -254,168 +250,44 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Google Sign-In (custom button trigger)
-  const GOOGLE_CLIENT_ID_KEY = "fluxo_google_client_id";
-  const googleConfigModal = document.getElementById("google-config-modal");
-  const closeGoogleConfigModal = document.getElementById("close-google-config-modal");
-  const googleClientIdInput = document.getElementById("google-client-id-input");
-  const saveGoogleClientIdBtn = document.getElementById("save-google-client-id-btn");
-  const googleConfigError = document.getElementById("google-config-error");
-
-  function getStoredGoogleClientId() {
-    return localStorage.getItem(GOOGLE_CLIENT_ID_KEY) || "";
-  }
-
+  // Google Sign-In (Firebase Standard)
   function initGoogleSignIn() {
     const googleBtns = document.querySelectorAll("#custom-google-btn, #custom-google-btn-register");
     googleBtns.forEach(btn => {
-      btn.addEventListener("click", () => {
-        const clientId = getStoredGoogleClientId();
-        if (!clientId) {
-          // Show config modal
-          googleConfigModal.classList.add("active");
-          googleClientIdInput.value = "";
-          googleConfigError.style.display = "none";
-          lucide.createIcons();
-          return;
-        }
-        triggerGoogleSignIn(clientId);
-      });
-    });
-  }
+      btn.addEventListener("click", async () => {
+        // Show loading state on the button
+        const originalContent = btn.innerHTML;
+        btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width: 20px; height: 20px; margin-right: 10px;"></i> Conectando...';
+        lucide.createIcons();
+        btn.disabled = true;
 
-  if (closeGoogleConfigModal) {
-    closeGoogleConfigModal.addEventListener("click", () => {
-      googleConfigModal.classList.remove("active");
-    });
-  }
-
-  if (saveGoogleClientIdBtn) {
-    saveGoogleClientIdBtn.addEventListener("click", () => {
-      const clientId = googleClientIdInput.value.trim();
-      if (!clientId || !clientId.includes(".apps.googleusercontent.com")) {
-        googleConfigError.textContent = "Client ID inválido. Deve terminar com .apps.googleusercontent.com";
-        googleConfigError.style.display = "block";
-        return;
-      }
-      localStorage.setItem(GOOGLE_CLIENT_ID_KEY, clientId);
-      googleConfigModal.classList.remove("active");
-      triggerGoogleSignIn(clientId);
-    });
-  }
-
-  function triggerGoogleSignIn(clientId) {
-    if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-      try {
-        google.accounts.id.initialize({
-          client_id: clientId,
-          callback: handleGoogleCredentialResponse,
-          auto_select: false,
-          cancel_on_tap_outside: true,
-        });
-
-        // Remove any previous overlay
-        const oldOverlay = document.getElementById('g-signin-overlay');
-        if (oldOverlay) oldOverlay.remove();
-
-        // Create a centered overlay with the Google Sign-In button
-        // This renders the official Google button which opens the account chooser popup
-        const overlay = document.createElement('div');
-        overlay.id = 'g-signin-overlay';
-        overlay.style.cssText = `
-          position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-          background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
-          display: flex; align-items: center; justify-content: center;
-          z-index: 9999; cursor: pointer;
-        `;
-
-        const container = document.createElement('div');
-        container.style.cssText = `
-          background: var(--card-bg, #1e1e2e); border-radius: 16px;
-          padding: 32px; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-          min-width: 320px; cursor: default;
-        `;
-        container.innerHTML = `
-          <p style="color: var(--text-muted, #aaa); margin-bottom: 20px; font-family: 'Outfit', sans-serif; font-size: 0.95rem;">
-            Escolha uma conta Google para continuar
-          </p>
-          <div id="g-rendered-btn" style="display: flex; justify-content: center;"></div>
-          <button id="g-signin-cancel" style="
-            margin-top: 16px; background: none; border: 1px solid var(--border, #333);
-            color: var(--text-muted, #aaa); padding: 8px 24px; border-radius: 8px;
-            cursor: pointer; font-family: 'Outfit', sans-serif; font-size: 0.85rem;
-          ">Cancelar</button>
-        `;
-
-        overlay.appendChild(container);
-        document.body.appendChild(overlay);
-
-        // Render the official Google button (this opens account chooser on click)
-        google.accounts.id.renderButton(
-          document.getElementById('g-rendered-btn'),
-          {
-            theme: 'filled_black',
-            size: 'large',
-            width: 280,
-            text: 'continue_with',
-            locale: 'pt-BR',
+        try {
+          const result = await Auth.googleSignIn();
+          if (result.success) {
+            showToast(`Bem-vindo, ${result.user.name}!`, "success");
+            enterApp();
+          } else {
+            if (result.message !== "Login cancelado.") {
+              showToast(result.message, "error");
+              // Alerta de emergência para garantir que o usuário veja o erro
+              alert("Erro no Login Google: " + result.message);
+              console.error("Firebase Auth Error Detail:", result.message);
+            }
+            // Restore button
+            btn.innerHTML = originalContent;
+            btn.disabled = false;
+            lucide.createIcons();
           }
-        );
-
-        // Close overlay when clicking outside or on cancel
-        overlay.addEventListener('click', (e) => {
-          if (e.target === overlay) overlay.remove();
-        });
-        document.getElementById('g-signin-cancel').addEventListener('click', () => {
-          overlay.remove();
-        });
-
-      } catch (err) {
-        console.error("Google Sign-In init error:", err);
-        googleConfigError.textContent = "Erro ao inicializar o Google Sign-In. Verifique seu Client ID.";
-        googleConfigError.style.display = "block";
-        googleConfigModal.classList.add("active");
-      }
-    } else {
-      showToast("A biblioteca do Google Identity Services não foi carregada. Verifique sua conexão e que está acessando via http://localhost:8080", "error");
-    }
-  }
-
-  async function handleGoogleCredentialResponse(response) {
-    try {
-      // Remove overlays if present
-      const tempDiv = document.getElementById('g-temp-btn');
-      if (tempDiv) tempDiv.remove();
-      const overlay = document.getElementById('g-signin-overlay');
-      if (overlay) overlay.remove();
-
-      // Decode Base64URL JWT (Google tokens use Base64URL, not standard Base64)
-      const base64Url = response.credential.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(
-        atob(base64)
-          .split('')
-          .map(function (c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-          })
-          .join('')
-      );
-
-      const payload = JSON.parse(jsonPayload);
-      const result = await Auth.googleSignIn({
-        email: payload.email,
-        name: payload.name,
-        picture: payload.picture,
+        } catch (err) {
+          console.error("Erro fatal no login Google:", err);
+          alert("Erro crítico: " + err.message);
+          showToast("Erro crítico ao abrir janela de login.", "error");
+          btn.innerHTML = originalContent;
+          btn.disabled = false;
+          lucide.createIcons();
+        }
       });
-      if (result.success) {
-        window.location.reload();
-      } else {
-        showToast(result.message || "Erro no login com Google.", "error");
-      }
-    } catch (err) {
-      console.error("Google Sign-In error:", err);
-      showToast("Erro ao processar o login com Google. Tente novamente ou limpe o cache do navegador.", "error");
-    }
+    });
   }
 
   initGoogleSignIn();

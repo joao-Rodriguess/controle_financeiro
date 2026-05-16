@@ -87,12 +87,12 @@ const Auth = (() => {
   }
 
   // --- Google Sign-In ---
-  async function googleSignIn(googleUser) {
-    // This is called from the legacy GSI callback if we keep it, 
-    // but with Firebase we usually use signInWithPopup or signInWithRedirect.
-    // For now, let's adapt it to use Firebase GoogleAuthProvider
+  async function googleSignIn() {
     try {
       const provider = new GoogleAuthProvider();
+      // Força a seleção de conta para evitar login automático indesejado
+      provider.setCustomParameters({ prompt: 'select_account' });
+      
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
@@ -113,7 +113,13 @@ const Auth = (() => {
       return { success: true, user: userData };
     } catch (err) {
       console.error("Google SignIn Error:", err);
-      return { success: false, message: "Erro no login com Google." };
+      if (err.code === 'auth/popup-closed-by-user') {
+        return { success: false, message: "Login cancelado." };
+      }
+      if (err.code === 'auth/operation-not-allowed') {
+        return { success: false, message: "Login com Google não está ativado no console do Firebase." };
+      }
+      return { success: false, message: "Erro no login com Google: " + err.message };
     }
   }
 
