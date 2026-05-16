@@ -1,5 +1,7 @@
 {
   "projects": {
     "default": "controle-financeiro-pj"
-  }
+  },
+  "targets": {},
+  "etags": {}
 }
