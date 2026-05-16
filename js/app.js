@@ -338,6 +338,19 @@ document.addEventListener("DOMContentLoaded", () => {
         state.geminiKey = profile.geminiKey;
         state.aiPersona = profile.aiPersona || "pessoal";
         state.categoryLimits = data.categoryLimits || {};
+
+        // Sync extra profile fields to session so getCurrentUser() has them
+        const isGoogle = user.providerData.some(p => p.providerId === 'google.com');
+        Auth.setSession({
+          id: user.uid,
+          name: user.displayName || profile.name || 'Usuário',
+          email: user.email,
+          provider: isGoogle ? 'google' : 'local',
+          phone: profile.phone || null,
+          birthdate: profile.birthdate || null,
+          avatar: profile.avatar || null,
+          createdAt: profile.createdAt || user.metadata.creationTime
+        });
         
         // Convert objects to arrays for compatibility with existing logic
         state.transactions = data.transactions ? Object.entries(data.transactions).map(([id, t]) => ({ id, ...t })) : [];
@@ -537,6 +550,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.target === walletModal) walletModal.classList.remove("active");
     if (e.target === salaryModal) salaryModal.classList.remove("active");
     if (e.target === avatarModal) avatarModal.classList.remove("active");
+    const closeMonthModalObj = document.getElementById("close-month-modal");
+    if (closeMonthModalObj && e.target === closeMonthModalObj) closeMonthModalObj.classList.remove("active");
   });
 
   salaryForm.addEventListener("submit", async (e) => {
@@ -559,11 +574,42 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  closeMonthBtn.addEventListener("click", async () => {
-    if (confirm("Deseja fechar o mês atual? Isso salvará um resumo no histórico e apagará as transações concluídas para iniciar um novo mês livremente.")) {
-      await closeMonth(); // Calls the backend-connected closeMonth further down
+   const closeMonthModal = document.getElementById("close-month-modal");
+  const closeMonthForm = document.getElementById("close-month-form");
+  const closeMonthInput = document.getElementById("close-month-input");
+
+  if (closeMonthModal) {
+    const closeBtn = closeMonthModal.querySelector(".close-modal");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => closeMonthModal.classList.remove("active"));
     }
+  }
+
+  closeMonthBtn.addEventListener("click", () => {
+    // Set default value to current year and month (YYYY-MM)
+    const now = new Date();
+    const currentMonth = (now.getMonth() + 1).toString().padStart(2, '0');
+    if (closeMonthInput) closeMonthInput.value = `${now.getFullYear()}-${currentMonth}`;
+    if (closeMonthModal) closeMonthModal.classList.add("active");
   });
+
+  if (closeMonthForm) {
+    closeMonthForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const selectedValue = closeMonthInput.value; // Format: "YYYY-MM"
+      if (!selectedValue) return;
+
+      const [year, month] = selectedValue.split("-");
+      // Create a date using the local time so the month matches correctly
+      const dateObj = new Date(parseInt(year), parseInt(month) - 1, 1);
+      const monthYearStr = dateObj.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }).toUpperCase();
+
+      if (confirm(`Você está prestes a fechar o mês de ${monthYearStr}. Esta ação irá armazenar seu saldo no histórico e limpar todos os gastos variáveis.\nDeseja continuar?`)) {
+        await closeMonth(monthYearStr);
+        if (closeMonthModal) closeMonthModal.classList.remove("active");
+      }
+    });
+  }
 
   runAiBtn.addEventListener("click", () => {
     if (!state.geminiKey) {
@@ -617,6 +663,34 @@ document.addEventListener("DOMContentLoaded", () => {
       installmentsGroup.style.display = "none";
     }
   });
+
+  // --- Type Toggle Logic (Expense vs Income) ---
+  const btnTypeExpense = document.getElementById("btn-type-expense");
+  const btnTypeIncome = document.getElementById("btn-type-income");
+  const typeInput = document.getElementById("type");
+  const expenseTypeContainer = document.getElementById("expense-type").parentElement;
+
+  if (btnTypeExpense && btnTypeIncome) {
+    btnTypeExpense.addEventListener("click", () => {
+      btnTypeExpense.classList.add("active");
+      btnTypeIncome.classList.remove("active");
+      typeInput.value = "expense";
+      expenseTypeContainer.style.display = "block";
+      
+      // Restore installments if it was debt
+      if (expenseTypeSelect.value === "debt") {
+        installmentsGroup.style.display = "grid";
+      }
+    });
+
+    btnTypeIncome.addEventListener("click", () => {
+      btnTypeIncome.classList.add("active");
+      btnTypeExpense.classList.remove("active");
+      typeInput.value = "income";
+      expenseTypeContainer.style.display = "none";
+      installmentsGroup.style.display = "none";
+    });
+  }
 
   // --- OCR Scanner (Gemini Vision) ---
   const ocrUploadBtn = document.getElementById("ocr-upload-btn");
@@ -1101,7 +1175,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
-  async function closeMonth() {
+  async function closeMonth(monthYearStr) {
     const user = auth.currentUser;
     if (!user) return;
 
@@ -1117,8 +1191,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const income = state.salary + totalExtraIncome;
       const balance = income - totalExpenses;
 
-      const now = new Date();
-      const monthYear = now.toLocaleDateString("pt-BR", { month: "long", year: "numeric" }).toUpperCase();
+      const monthYear = monthYearStr || new Date().toLocaleDateString("pt-BR", { month: "long", year: "numeric" }).toUpperCase();
 
       const historyData = {
         monthYear: monthYear,
@@ -1522,15 +1595,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- Simulation Logic ---
   const simRange = document.getElementById("sim-expense-range");
   const simLabel = document.getElementById("expense-label");
-  const runSimBtn = document.getElementById("run-simulation");
 
   simRange.addEventListener("input", () => {
     simLabel.textContent = `${simRange.value}%`;
     initSimulation(); // Update automatically on slider move
-  });
-
-  runSimBtn.addEventListener("click", () => {
-    initSimulation();
   });
 
   function initSimulation() {
@@ -1555,13 +1623,13 @@ document.addEventListener("DOMContentLoaded", () => {
         .filter((t) => t.type === "income")
         .reduce((acc, t) => acc + Number(t.amount || 0), 0);
         
-      // Separate expenses for more precision based on UI label "Variable Expenses"
+      // Separate expenses. Legacy expenses without expenseType are considered variable.
       const variableExpenses = (state.transactions || [])
-        .filter((t) => t.type === "expense" && t.expenseType === "variable")
+        .filter((t) => t.type === "expense" && (!t.expenseType || t.expenseType === "variable"))
         .reduce((acc, t) => acc + Number(t.amount || 0), 0);
 
       const fixedExpenses = (state.transactions || [])
-        .filter((t) => t.type === "expense" && t.expenseType !== "variable" && t.confirmed !== false)
+        .filter((t) => t.type === "expense" && t.expenseType && t.expenseType !== "variable")
         .reduce((acc, t) => acc + Number(t.amount || 0), 0);
 
       const adjustedVariableExpense = variableExpenses * multiplier;
@@ -1582,10 +1650,15 @@ document.addEventListener("DOMContentLoaded", () => {
         "Mês 7", "Mês 8", "Mês 9", "Mês 10", "Mês 11", "Mês 12",
       ];
       
+      // Calculate real starting balance by accumulating history + current actual balance
+      const currentActualBalance = avgIncome - (variableExpenses + fixedExpenses);
+      const historyAccumulated = (state.history || []).reduce((acc, h) => acc + Number(h.balance || 0), 0);
+      const startingBalance = historyAccumulated + currentActualBalance;
+
       const simulatedBalance = [];
-      // Current balance considering the adjusted variables
+      // Project balance considering the adjusted monthly diff
       for (let i = 0; i < 12; i++) {
-        simulatedBalance.push(monthlyDiff * (i + 1));
+        simulatedBalance.push(startingBalance + (monthlyDiff * (i + 1)));
       }
 
       if (typeof Chart === 'undefined') {
@@ -1795,10 +1868,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const result = await Auth.updateProfile({
-      currentPassword: currentPw,
-      newPassword: newPw,
-    });
+    const result = await Auth.changePassword(currentPw, newPw);
 
     if (result.success) {
       passwordError.style.display = "none";
@@ -2104,7 +2174,7 @@ document.addEventListener("DOMContentLoaded", () => {
       "Categoria": t.category,
       "Tipo": t.type === "income" ? "Receita" : (t.expenseType === "fixed" ? "Fixo" : (t.expenseType === "debt" ? "Dívida" : "Variável")),
       "Data": new Date(t.date + 'T12:00:00').toLocaleDateString("pt-BR"),
-      "Valor (R$)": t.amount.toFixed(2),
+      "Valor": t.amount,
       "Status": t.confirmed === false ? "Pendente" : "Confirmado",
       "Parcela": t.installments ? `${t.installments.current}/${t.installments.total}` : "-"
     }));
@@ -2169,16 +2239,25 @@ document.addEventListener("DOMContentLoaded", () => {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-    // Document styling
+    // Premium Document Styling
+    doc.setFillColor(99, 102, 241); // Indigo Primary
+    doc.rect(0, 0, 210, 40, 'F');
+    
+    doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.text("Relatório de Lançamentos - Fluxo", 14, 22);
+    doc.setFontSize(22);
+    doc.text("Relatório de Lançamentos", 14, 20);
 
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(100);
+    doc.setFontSize(11);
+    doc.text("Controle Financeiro", 14, 28);
+    
     const now = new Date();
-    doc.text(`Gerado em: ${now.toLocaleDateString("pt-BR")} às ${now.toLocaleTimeString("pt-BR")}`, 14, 30);
+    doc.setFontSize(9);
+    doc.setTextColor(200, 200, 255);
+    doc.text(`Gerado em: ${now.toLocaleDateString("pt-BR")} às ${now.toLocaleTimeString("pt-BR")}`, 14, 34);
+
+    doc.setTextColor(60, 60, 60); // Reset for table text
 
     const tableColumn = ["Descrição", "Categoria", "Tipo", "Data", "Valor (R$)", "Status", "Parcela"];
     const tableRows = [];
@@ -2226,19 +2305,22 @@ document.addEventListener("DOMContentLoaded", () => {
     doc.autoTable({
       head: [tableColumn],
       body: tableRows,
-      startY: 35,
+      startY: 45,
       theme: 'grid',
-      styles: {
-        fontSize: 9,
-        cellPadding: 3,
-        font: "helvetica"
-      },
       headStyles: {
         fillColor: headColor,
-        textColor: [255, 255, 255]
+        textColor: 255,
+        fontSize: 10,
+        fontStyle: 'bold'
       },
       alternateRowStyles: {
-        fillColor: [245, 245, 245]
+        fillColor: [245, 245, 250]
+      },
+      styles: {
+        fontSize: 9,
+        cellPadding: 4,
+        font: "helvetica",
+        textColor: [50, 50, 50]
       }
     });
 
@@ -2281,7 +2363,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const dateStr = new Date(t.date + 'T12:00:00').toLocaleDateString("pt-BR");
       const status = t.confirmed === false ? "Pendente" : "Confirmado";
       const parcela = t.installments ? `${t.installments.current}/${t.installments.total}` : "-";
-      csv += `"${t.desc}";"${t.category}";"${tipo}";"${dateStr}";"${t.amount.toFixed(2)}";"${status}";"${parcela}"\n`;
+      const amountStr = t.amount.toFixed(2).replace('.', ',');
+      csv += `"${t.desc}";"${t.category}";"${tipo}";"${dateStr}";"${amountStr}";"${status}";"${parcela}"\n`;
     });
 
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });

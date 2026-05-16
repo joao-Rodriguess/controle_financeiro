@@ -7,7 +7,10 @@ import {
   updateProfile as firebaseUpdateProfile,
   GoogleAuthProvider,
   signInWithCredential,
-  signInWithPopup
+  signInWithPopup,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { ref, set, get, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
@@ -127,7 +130,29 @@ const Auth = (() => {
   function getCurrentUser() {
     const user = auth.currentUser;
     if (user) {
-      return { id: user.uid, name: user.displayName, email: user.email };
+      // Detect auth provider from Firebase providerData
+      const isGoogle = user.providerData.some(p => p.providerId === 'google.com');
+      const provider = isGoogle ? 'google' : 'local';
+
+      // Merge with any extra profile data stored in localStorage
+      let extraData = {};
+      try {
+        const stored = localStorage.getItem(USER_STORE_KEY);
+        if (stored) extraData = JSON.parse(stored);
+      } catch (e) { /* ignore */ }
+
+      const merged = {
+        id: user.uid,
+        name: user.displayName || extraData.name || 'Usuário',
+        email: user.email,
+        provider,
+        // Preserve extra profile fields from DB (phone, birthdate, avatar, createdAt)
+        phone: extraData.phone || null,
+        birthdate: extraData.birthdate || null,
+        avatar: extraData.avatar || null,
+        createdAt: extraData.createdAt || user.metadata.creationTime
+      };
+      return merged;
     }
     // Fallback to local storage for sync checks
     try {
@@ -155,13 +180,22 @@ const Auth = (() => {
     if (!user) return { success: false, message: "Não autenticado." };
 
     try {
-      if (updates.name) {
-        await firebaseUpdateProfile(user, { displayName: updates.name });
+      // Prevent saving passwords to Realtime DB
+      const dbUpdates = { ...updates };
+      delete dbUpdates.currentPassword;
+      delete dbUpdates.newPassword;
+
+      if (dbUpdates.name) {
+        await firebaseUpdateProfile(user, { displayName: dbUpdates.name });
       }
 
-      await update(ref(db, `users/${user.uid}/profile`), updates);
+      await update(ref(db, `users/${user.uid}/profile`), dbUpdates);
 
-      const userData = { id: user.uid, name: user.displayName, email: user.email };
+      const isGoogle = user.providerData.some(p => p.providerId === 'google.com');
+      // Preserve existing extra fields in session when updating profile
+      let existingData = {};
+      try { const s = localStorage.getItem(USER_STORE_KEY); if (s) existingData = JSON.parse(s); } catch(e) {}
+      const userData = { ...existingData, id: user.uid, name: user.displayName, email: user.email, provider: isGoogle ? 'google' : 'local', ...dbUpdates };
       setSession(userData);
       return { success: true, message: "Perfil atualizado!" };
     } catch (err) {
@@ -170,10 +204,43 @@ const Auth = (() => {
     }
   }
 
+  // --- Change Password ---
+  async function changePassword(currentPassword, newPassword) {
+    const user = auth.currentUser;
+    if (!user) return { success: false, message: "Não autenticado." };
+
+    try {
+      // 1. Reauthenticate
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+      
+      // 2. Update password
+      await updatePassword(user, newPassword);
+      
+      // Remove plain text passwords from DB if they exist (cleanup)
+      await update(ref(db, `users/${user.uid}/profile`), {
+        currentPassword: null,
+        newPassword: null
+      });
+
+      return { success: true, message: "Senha alterada com sucesso!" };
+    } catch (err) {
+      console.error("Change Password error:", err);
+      let message = "Erro ao alterar a senha.";
+      if (err.code === 'auth/invalid-credential') message = "A senha atual está incorreta.";
+      if (err.code === 'auth/weak-password') message = "A nova senha é muito fraca.";
+      return { success: false, message };
+    }
+  }
+
   // Handle auth state changes
   onAuthStateChanged(auth, (user) => {
     if (user) {
-      const userData = { id: user.uid, name: user.displayName, email: user.email };
+      const isGoogle = user.providerData.some(p => p.providerId === 'google.com');
+      // Preserve existing extra profile fields when auth state changes
+      let existingData = {};
+      try { const s = localStorage.getItem(USER_STORE_KEY); if (s) existingData = JSON.parse(s); } catch(e) {}
+      const userData = { ...existingData, id: user.uid, name: user.displayName, email: user.email, provider: isGoogle ? 'google' : 'local' };
       setSession(userData);
     } else {
       clearSession();
@@ -188,6 +255,7 @@ const Auth = (() => {
     isLoggedIn,
     logout,
     updateProfile,
+    changePassword,
     getAuthHeaders,
     apiFetch,
     API_URL: './api',
