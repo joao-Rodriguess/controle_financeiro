@@ -3,6 +3,5 @@
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ],
-  "cleanUrls": true,
-  "outputDirectory": "."
+  "cleanUrls": true
 }
