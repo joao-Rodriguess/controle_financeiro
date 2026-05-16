@@ -1555,18 +1555,24 @@ document.addEventListener("DOMContentLoaded", () => {
         .filter((t) => t.type === "income")
         .reduce((acc, t) => acc + Number(t.amount || 0), 0);
         
-      const avgExpense = (state.transactions || [])
-        .filter((t) => t.type === "expense" && t.confirmed !== false)
+      // Separate expenses for more precision based on UI label "Variable Expenses"
+      const variableExpenses = (state.transactions || [])
+        .filter((t) => t.type === "expense" && t.expenseType === "variable")
         .reduce((acc, t) => acc + Number(t.amount || 0), 0);
 
-      const adjustedExpense = avgExpense * multiplier;
-      const monthlyDiff = avgIncome - adjustedExpense;
+      const fixedExpenses = (state.transactions || [])
+        .filter((t) => t.type === "expense" && t.expenseType !== "variable" && t.confirmed !== false)
+        .reduce((acc, t) => acc + Number(t.amount || 0), 0);
+
+      const adjustedVariableExpense = variableExpenses * multiplier;
+      const totalAdjustedExpense = fixedExpenses + adjustedVariableExpense;
+      const monthlyDiff = avgIncome - totalAdjustedExpense;
 
       const summary = document.getElementById("simulation-summary");
       if (summary) {
         summary.style.display = "block";
         document.getElementById("sim-avg-income").textContent = formatCurrency(avgIncome);
-        document.getElementById("sim-adj-expense").textContent = formatCurrency(adjustedExpense);
+        document.getElementById("sim-adj-expense").textContent = formatCurrency(totalAdjustedExpense);
         document.getElementById("sim-monthly-diff").textContent = formatCurrency(monthlyDiff);
         document.getElementById("sim-monthly-diff").style.color = monthlyDiff >= 0 ? "var(--success)" : "var(--danger)";
       }
