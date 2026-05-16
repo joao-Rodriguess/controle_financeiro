@@ -222,7 +222,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const result = await Auth.login(email, password);
     if (result.success) {
-      Auth.migrateOldData(result.user.id);
+      // Auth.migrateOldData(result.user.id);
       enterApp();
     } else {
       showAuthError(loginError, result.message);
@@ -857,19 +857,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // --- Data Management (per-user / API Sync) ---
   async function saveState() {
-    try {
-      const user = Auth.getCurrentUser();
-      if (!user) {
-        console.error("saveState: Nenhum usuário logado!");
-        return;
-      }
-      // Save local-only preferences
-      Auth.saveUserData("salary", state.salary.toString());
-      Auth.saveUserData("history", state.history);
-      Auth.saveUserData("categoryLimits", state.categoryLimits);
-    } catch (err) {
-      console.error("saveState: Erro ao salvar preferências locais:", err);
-    }
+    // This is now handled automatically by Firebase Realtime Database
+    console.log("saveState called: state is persisted in Firebase.");
   }
 
   function formatCurrency(value) {
@@ -1280,19 +1269,20 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   window.deleteTransaction = async (id) => {
+    const user = auth.currentUser;
+    if (!user) return;
+
     if (confirm("Tem certeza que deseja excluir este lançamento?")) {
       try {
-        const res = await Auth.apiFetch(`/transactions/${id}`, { method: 'DELETE' });
-        if (!res.ok) throw new Error("Erro ao excluir do servidor");
+        await remove(ref(db, `users/${user.uid}/transactions/${id}`));
         
         state.transactions = state.transactions.filter((t) => t.id !== id);
-        await saveState();
         renderExpensesTable();
         updateDashboard();
-        showToast("Lançamento excluído da API", "success");
+        showToast("Lançamento excluído com sucesso", "success");
       } catch (err) {
         console.error(err);
-        showToast("Erro ao excluir do servidor", "error");
+        showToast("Erro ao excluir do Firebase", "error");
       }
     }
   };
@@ -1653,6 +1643,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const budgetForm = document.getElementById("budget-limits-form");
   budgetForm.addEventListener("submit", async (e) => {
     e.preventDefault();
+    const user = auth.currentUser;
+    if (!user) return;
+
     const newLimits = {
       "Alimentação": parseFloat(document.getElementById("limit-alimentacao").value) || 0,
       "Moradia": parseFloat(document.getElementById("limit-moradia").value) || 0,
@@ -1662,18 +1655,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       showToast("Salvando limites...", "info");
-      const res = await Auth.apiFetch(`/auth/profile`, {
-        method: 'PUT',
-        body: JSON.stringify({ categoryLimits: newLimits })
-      });
-      if (!res.ok) throw new Error("Erro da API");
+      await update(ref(db, `users/${user.uid}`), { categoryLimits: newLimits });
       
       state.categoryLimits = newLimits;
       updateDashboard(); // re-render the budgets
-      showToast("Limites de categoria salvos no servidor!", "success");
+      showToast("Limites de categoria salvos no Firebase!", "success");
     } catch (err) {
       console.error(err);
-      showToast("Falha ao salvar limites no servidor.", "error");
+      showToast("Falha ao salvar limites no Firebase.", "error");
     }
   });
 
@@ -2283,13 +2272,13 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function saveAllConversations() {
-    // Auth.saveUserData("chatConversations", chatConversations);
+    const user = auth.currentUser;
+    if (!user) return;
+
     try {
-        await Auth.apiFetch(`/auth/profile`, {
-          method: 'PUT', body: JSON.stringify({ chatConversations: chatConversations })
-        });
+        await update(ref(db, `users/${user.uid}/profile`), { chat_conversations: chatConversations });
     } catch (e) {
-        console.error("Failed to save chat conversation to DB", e);
+        console.error("Failed to save chat conversation to Firebase", e);
     }
   }
 
@@ -2742,6 +2731,9 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   window.addFundsToGoal = async (id) => {
+    const user = auth.currentUser;
+    if (!user) return;
+
     const val = prompt("Qual valor você deseja guardar nesta meta agora? (Será descontado do saldo como despesa)");
     if (!val) return;
     const amount = parseFloat(val);
@@ -2753,29 +2745,33 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const newCurrent = g.currentAmount + amount;
       
-      // Update goal in API (we have a PUT route for goals currentAmount)
-      await Auth.apiFetch(`/goals/${id}`, { 
-        method: 'PUT', body: JSON.stringify({ currentAmount: newCurrent }) 
-      });
+      // Update goal in Firebase
+      await update(ref(db, `users/${user.uid}/goals/${id}`), { currentAmount: newCurrent });
       g.currentAmount = newCurrent;
 
-      // Create transaction via API
+      // Create transaction in Firebase
       const tPayload = {
-        desc: `Depósito na Meta: ${g.name}`, amount, type: 'expense', walletId: 'default',
-        expenseType: 'variable', category: 'Investimentos', date: new Date().toISOString().split('T')[0], confirmed: true
+        desc: `Depósito na Meta: ${g.name}`,
+        amount,
+        type: 'expense',
+        walletId: 'default',
+        expenseType: 'variable',
+        category: 'Investimentos',
+        date: new Date().toISOString().split('T')[0],
+        confirmed: true
       };
-      const resT = await Auth.apiFetch(`/transactions`, { method: 'POST', body: JSON.stringify(tPayload) });
-      const dataT = await resT.json();
       
-      state.transactions.unshift({ id: dataT.id, ...tPayload });
+      const newTRef = push(ref(db, `users/${user.uid}/transactions`));
+      await set(newTRef, tPayload);
+      
+      state.transactions.unshift({ id: newTRef.key, ...tPayload });
 
-      await saveState();
       renderGoals();
       updateDashboard();
       showToast(`R$${amount.toFixed(2)} guardados na sua meta!`, "success");
     } catch (err) {
       console.error(err);
-      showToast("Erro ao depositar fundos", "error");
+      showToast("Erro ao depositar fundos no Firebase", "error");
     }
   };
 
@@ -2910,44 +2906,39 @@ document.addEventListener("DOMContentLoaded", () => {
 
   walletForm.addEventListener("submit", async (e) => {
     e.preventDefault();
+    const user = auth.currentUser;
+    if (!user) return;
+
     const name = document.getElementById("wallet-name").value;
     const type = document.getElementById("wallet-type").value;
     const color = document.getElementById("wallet-color").value;
     const initialBalance = parseFloat(document.getElementById("wallet-initial").value) || 0;
 
-    const payload = { name, type, color, initialBalance };
+    const payload = { name, type, color, initial: initialBalance };
 
     try {
-      const headers = Auth.getAuthHeaders();
-      let newId;
-
+      showToast("Configurando carteira...", "info");
+      
       if (editingWalletId) {
-        payload.id = editingWalletId;
-        await fetch(`${Auth.API_URL}/wallets/${editingWalletId}`, { method: 'DELETE', headers });
-        const res = await fetch(`${Auth.API_URL}/wallets`, { method: 'POST', headers, body: JSON.stringify(payload) });
-        const data = await res.json();
-        newId = data.id;
-
+        await update(ref(db, `users/${user.uid}/wallets/${editingWalletId}`), payload);
         const index = state.wallets.findIndex((w) => w.id === editingWalletId);
-        state.wallets[index] = { id: newId, ...payload };
+        state.wallets[index] = { id: editingWalletId, ...payload };
       } else {
-        const res = await fetch(`${Auth.API_URL}/wallets`, { method: 'POST', headers, body: JSON.stringify(payload) });
-        const data = await res.json();
-        newId = data.id;
-        state.wallets.push({ id: newId, ...payload });
+        const newRef = push(ref(db, `users/${user.uid}/wallets`));
+        await set(newRef, payload);
+        state.wallets.push({ id: newRef.key, ...payload });
       }
 
-      await saveState();
       renderWalletsList();
       updateDashboard();
       walletModal.classList.remove("active");
       walletForm.reset();
       editingWalletId = null;
-      showToast("Carteira configurada!", "success");
+      showToast("Carteira configurada no Firebase!", "success");
 
     } catch (err) {
       console.error(err);
-      showToast("Erro ao configurar carteira", "error");
+      showToast("Erro ao configurar carteira no Firebase", "error");
     }
   });
 
@@ -2968,11 +2959,12 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   window.deleteWallet = async (id) => {
+    const user = auth.currentUser;
+    if (!user) return;
+
     if (confirm("Deseja realmente excluir esta carteira? As transações vinculadas ficarão sem carteira específica.")) {
       try {
-        const headers = Auth.getAuthHeaders();
-        const res = await fetch(`${Auth.API_URL}/wallets/${id}`, { method: 'DELETE', headers });
-        if (!res.ok) throw new Error("Erro ao excluir carteira");
+        await remove(ref(db, `users/${user.uid}/wallets/${id}`));
 
         state.wallets = state.wallets.filter(w => w.id !== id);
         state.transactions = state.transactions.map(t => {
@@ -2980,13 +2972,12 @@ document.addEventListener("DOMContentLoaded", () => {
           return t;
         });
         
-        await saveState();
         renderWalletsList();
         updateDashboard();
-        showToast("Carteira excluída", "success");
+        showToast("Carteira excluída do Firebase", "success");
       } catch (err) {
         console.error(err);
-        showToast("Erro ao excluir carteira", "error");
+        showToast("Erro ao excluir carteira do Firebase", "error");
       }
     }
   };
