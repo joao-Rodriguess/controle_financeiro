@@ -1526,6 +1526,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   simRange.addEventListener("input", () => {
     simLabel.textContent = `${simRange.value}%`;
+    initSimulation(); // Update automatically on slider move
   });
 
   runSimBtn.addEventListener("click", () => {
