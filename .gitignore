@@ -1,0 +1,10 @@
+node_modules/
+.DS_Store
+.env
+.agent/
+.firebase/
+.vercel/
+backup_v1/
+dist/
+build/
+*.log

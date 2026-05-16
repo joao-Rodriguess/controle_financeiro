@@ -1,0 +1,1169 @@
+<!doctype html>
+<html lang="pt-BR" style="color-scheme: dark;">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fluxo | Gestão Financeira Inteligente</title>
+  <meta name="description" content="Sistema de controle financeiro com previsões e simulações mensais." />
+  <!-- Security: CSP fallback for non-server environments -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://cdn.sheetjs.com https://cdnjs.cloudflare.com https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https: http:; connect-src 'self' https://unpkg.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://generativelanguage.googleapis.com https://accounts.google.com; frame-src https://accounts.google.com;" />
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- SheetJS for Excel Export -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <!-- jsPDF + AutoTable for PDF Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <!-- PWA Support -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/activity.svg" />
+</head>
+
+<body>
+  <script>
+    const savedTheme = localStorage.getItem("fluxo_theme");
+    if (savedTheme && savedTheme !== "default") {
+      document.body.classList.add(savedTheme);
+    }
+  </script>
+  <!-- ============================================ -->
+  <!-- AUTH SCREENS (Login / Cadastro) -->
+  <!-- ============================================ -->
+  <div class="auth-screen" id="auth-screen">
+    <div class="auth-bg-effects">
+      <div class="auth-orb auth-orb-1"></div>
+      <div class="auth-orb auth-orb-2"></div>
+      <div class="auth-orb auth-orb-3"></div>
+    </div>
+
+    <div class="auth-container">
+      <div class="auth-brand">
+        <div class="auth-logo-icon">
+          <i data-lucide="activity"></i>
+        </div>
+        <h1>Fluxo</h1>
+        <p>Gestão Financeira Inteligente</p>
+      </div>
+
+      <!-- LOGIN FORM -->
+      <div class="auth-card" id="login-card">
+        <h2>Bem-vindo de volta</h2>
+        <p class="auth-subtitle">Entre na sua conta para continuar</p>
+
+        <div id="login-error" class="auth-error" style="display: none;"></div>
+
+        <form id="login-form" autocomplete="on">
+          <div class="auth-form-group">
+            <div class="auth-input-wrapper">
+              <i data-lucide="mail"></i>
+              <input type="email" id="login-email" placeholder="Seu e-mail" required autocomplete="email" />
+            </div>
+          </div>
+          <div class="auth-form-group">
+            <div class="auth-input-wrapper">
+              <i data-lucide="lock"></i>
+              <input type="password" id="login-password" placeholder="Sua senha" required
+                autocomplete="current-password" />
+              <button type="button" class="toggle-password" data-target="login-password">
+                <i data-lucide="eye"></i>
+              </button>
+            </div>
+          </div>
+          <button type="submit" class="auth-btn-primary" id="login-submit-btn">
+            <i data-lucide="log-in"></i>
+            <span>Entrar</span>
+          </button>
+        </form>
+
+        <div class="auth-divider">
+          <span>ou continue com</span>
+        </div>
+
+        <div id="google-signin-btn" class="google-btn-wrapper">
+          <button type="button" class="auth-btn-google" id="custom-google-btn">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
+              <path fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+              <path fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+            </svg>
+            <span>Entrar com Google</span>
+          </button>
+        </div>
+
+        <p class="auth-switch">
+          Não tem conta?
+          <button type="button" class="auth-link" id="go-to-register">Cadastre-se</button>
+        </p>
+      </div>
+
+      <!-- REGISTER FORM -->
+      <div class="auth-card" id="register-card" style="display: none;">
+        <h2>Criar Conta</h2>
+        <p class="auth-subtitle">Comece a controlar suas finanças agora</p>
+
+        <div id="register-error" class="auth-error" style="display: none;"></div>
+
+        <form id="register-form" autocomplete="on">
+          <div class="auth-form-group">
+            <div class="auth-input-wrapper">
+              <i data-lucide="user"></i>
+              <input type="text" id="register-name" placeholder="Seu nome completo" required autocomplete="name" />
+            </div>
+          </div>
+          <div class="auth-form-group">
+            <div class="auth-input-wrapper">
+              <i data-lucide="mail"></i>
+              <input type="email" id="register-email" placeholder="Seu e-mail" required autocomplete="email" />
+            </div>
+          </div>
+          <div class="auth-form-group">
+            <div class="auth-input-wrapper">
+              <i data-lucide="lock"></i>
+              <input type="password" id="register-password" placeholder="Crie uma senha (mín. 6 caracteres)" required
+                minlength="6" autocomplete="new-password" />
+              <button type="button" class="toggle-password" data-target="register-password">
+                <i data-lucide="eye"></i>
+              </button>
+            </div>
+          </div>
+          <div class="auth-form-group">
+            <div class="auth-input-wrapper">
+              <i data-lucide="lock"></i>
+              <input type="password" id="register-confirm" placeholder="Confirme sua senha" required minlength="6"
+                autocomplete="new-password" />
+            </div>
+          </div>
+          <button type="submit" class="auth-btn-primary" id="register-submit-btn">
+            <i data-lucide="user-plus"></i>
+            <span>Criar Conta</span>
+          </button>
+        </form>
+
+        <div class="auth-divider">
+          <span>ou continue com</span>
+        </div>
+
+        <div class="google-btn-wrapper">
+          <button type="button" class="auth-btn-google" id="custom-google-btn-register">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
+              <path fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+              <path fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+            </svg>
+            <span>Cadastrar com Google</span>
+          </button>
+        </div>
+
+        <p class="auth-switch">
+          Já tem conta?
+          <button type="button" class="auth-link" id="go-to-login">Fazer login</button>
+        </p>
+      </div>
+    </div>
+
+    <!-- Google Client ID Config Modal -->
+    <div class="modal" id="google-config-modal">
+      <div class="modal-content" style="max-width: 520px;">
+        <div class="modal-header">
+          <h2><i data-lucide="settings"
+              style="width:24px;height:24px;color:var(--primary);vertical-align:middle;margin-right:8px;"></i>Configurar
+            Google Sign-In</h2>
+          <button class="close-modal" id="close-google-config-modal">&times;</button>
+        </div>
+
+        <div class="google-config-body">
+          <div class="google-config-steps">
+            <div class="config-step">
+              <span class="config-step-number">1</span>
+              <div>
+                <strong>Acesse o Google Cloud Console</strong>
+                <p>Vá para <a href="https://console.cloud.google.com/apis/credentials" target="_blank"
+                    style="color: var(--primary);">console.cloud.google.com/apis/credentials</a></p>
+              </div>
+            </div>
+            <div class="config-step">
+              <span class="config-step-number">2</span>
+              <div>
+                <strong>Crie um projeto</strong>
+                <p>Clique em "Criar Projeto", dê um nome (ex: "Fluxo App") e confirme.</p>
+              </div>
+            </div>
+            <div class="config-step">
+              <span class="config-step-number">3</span>
+              <div>
+                <strong>Configure a Tela de Consentimento</strong>
+                <p>Vá em "Tela de Consentimento OAuth" → Tipo "Externo" → preencha apenas o obrigatório.</p>
+              </div>
+            </div>
+            <div class="config-step">
+              <span class="config-step-number">4</span>
+              <div>
+                <strong>Crie as Credenciais</strong>
+                <p>Vá em "Credenciais" → "Criar Credenciais" → "ID do cliente OAuth" → Tipo "Aplicativo da Web".</p>
+              </div>
+            </div>
+            <div class="config-step">
+              <span class="config-step-number">5</span>
+              <div>
+                <strong>Adicione a Origem Autorizada</strong>
+                <p>Em "Origens JavaScript autorizadas", adicione: <code
+                    style="background:rgba(99,102,241,0.2);padding:2px 6px;border-radius:4px;color:var(--primary);">http://localhost:8080</code>
+                </p>
+              </div>
+            </div>
+            <div class="config-step">
+              <span class="config-step-number">6</span>
+              <div>
+                <strong>Copie o Client ID e cole abaixo</strong>
+                <p>O Client ID termina com <code
+                    style="background:rgba(99,102,241,0.2);padding:2px 6px;border-radius:4px;color:var(--text-muted);">.apps.googleusercontent.com</code>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div id="google-config-error" class="auth-error" style="display: none; margin-bottom: 1rem;"></div>
+
+          <div class="form-group" style="margin-top: 1.5rem;">
+            <label for="google-client-id-input">Seu Client ID do Google:</label>
+            <input type="text" id="google-client-id-input" placeholder="123456789.apps.googleusercontent.com"
+              style="font-family: monospace; font-size: 0.85rem;" />
+          </div>
+
+          <button class="auth-btn-primary" id="save-google-client-id-btn" style="margin-top: 0.5rem;">
+            <i data-lucide="check"></i>
+            <span>Salvar e Conectar com Google</span>
+          </button>
+
+          <p style="text-align: center; margin-top: 1rem; color: var(--text-muted); font-size: 0.8rem;">
+            ⚡ Só é necessário configurar uma vez. O Client ID ficará salvo.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- MAIN APP (hidden until logged in) -->
+  <!-- ============================================ -->
+  <div class="app-container" id="app-container" style="display: none;">
+    <div class="mobile-overlay" id="mobile-overlay"></div>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <i data-lucide="activity" class="logo-icon"></i>
+        <span>Fluxo</span>
+      </div>
+      <nav class="nav-menu">
+        <button class="nav-item active" data-view="dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard</span>
+        </button>
+        <button class="nav-item" data-view="expenses">
+          <i data-lucide="credit-card"></i>
+          <span>Lançamentos</span>
+        </button>
+        <button class="nav-item" data-view="simulations">
+          <i data-lucide="trending-up"></i>
+          <span>Simulações</span>
+        </button>
+        <button class="nav-item" data-view="history">
+          <i data-lucide="history"></i>
+          <span>Histórico</span>
+        </button>
+        <button class="nav-item" data-view="ai-advisor">
+          <i data-lucide="sparkles"></i>
+          <span>Conselheiro IA</span>
+        </button>
+        <button class="nav-item" data-view="goals">
+          <i data-lucide="target"></i>
+          <span>Metas</span>
+        </button>
+        <button class="nav-item" data-view="profile">
+          <i data-lucide="settings"></i>
+          <span>Meu Perfil</span>
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-profile" id="sidebar-user-profile" style="cursor: pointer;" title="Abrir Perfil">
+          <div class="avatar" id="sidebar-avatar">U</div>
+          <div class="user-info">
+            <span class="name" id="sidebar-user-name">Usuário</span>
+            <span class="status">Premium Plan</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <header class="top-header">
+        <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu de navegação">
+          <i data-lucide="menu"></i>
+        </button>
+        <div class="header-search">
+          <i data-lucide="search"></i>
+          <input type="text" placeholder="Buscar registros..." />
+        </div>
+        <div class="header-actions">
+          <select id="theme-selector" class="theme-select" title="Escolher Tema"
+            style="background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; padding: 0.4rem 0.8rem; outline: none; font-size: 0.9rem; font-family: 'Outfit', sans-serif; cursor: pointer;">
+            <option value="default">Midnight Padrão</option>
+            <option value="theme-emerald">Emerald Finance</option>
+            <option value="theme-cyberpunk">Cyberpunk Neon</option>
+            <option value="theme-ocean">Deep Ocean</option>
+            <option value="theme-sunset">Sunset Orange</option>
+          </select>
+          <button class="btn-primary" id="close-month-btn" style="background: var(--danger); border: none;">
+            <i data-lucide="lock"></i>
+            <span>Fechar Mês</span>
+          </button>
+          <button class="btn-primary" id="set-salary-btn"
+            style="background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border);">
+            <i data-lucide="wallet"></i>
+            <span>Ajustar Salário</span>
+          </button>
+          <button class="btn-icon" id="logout-btn" title="Sair da Conta" aria-label="Sair da Conta">
+            <i data-lucide="log-out"></i>
+          </button>
+          <button class="btn-primary" id="new-expense-btn">
+            <i data-lucide="plus"></i>
+            <span>Novo Gasto</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Dashboard View -->
+      <section id="dashboard" class="content-view active">
+        <div class="stats-grid">
+          <div class="stat-card income">
+            <div class="stat-icon"><i data-lucide="arrow-up-right"></i></div>
+            <div class="stat-content">
+              <span class="stat-label">Renda Mensal</span>
+              <span class="stat-value" id="total-income" aria-live="polite">R$ 0,00</span>
+            </div>
+          </div>
+          <div class="stat-card expense">
+            <div class="stat-icon"><i data-lucide="arrow-down-left"></i></div>
+            <div class="stat-content">
+              <span class="stat-label">Gastos Totais</span>
+              <span class="stat-value" id="total-expenses" aria-live="polite">R$ 0,00</span>
+            </div>
+          </div>
+          <div class="stat-card balance">
+            <div class="stat-icon"><i data-lucide="wallet"></i></div>
+            <div class="stat-content">
+              <span class="stat-label">Saldo Atual</span>
+              <span class="stat-value" id="current-balance" aria-live="polite">R$ 0,00</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="charts-container">
+          <div class="chart-card">
+            <h3>Fluxo de Caixa (6 meses)</h3>
+            <div class="chart-container-inner">
+              <canvas id="mainChart"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <h3>Categorias de Gastos</h3>
+            <div class="chart-container-inner">
+              <canvas id="pieChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="budget-overview" style="margin-bottom: 2rem;">
+          <div class="section-header">
+            <h3>Orçamento Mensal vs Limites</h3>
+          </div>
+          <div class="goals-grid" id="budget-progress-container">
+            <!-- Dinâmico via JS -->
+          </div>
+        </div>
+
+        <div class="recent-transactions">
+          <div class="section-header">
+            <h3>Transações Recentes</h3>
+            <button class="btn-text">Ver todos</button>
+          </div>
+          <div class="table-container">
+            <table id="recent-table">
+              <thead>
+                <tr>
+                  <th>Descrição</th>
+                  <th>Categoria</th>
+                  <th>Data</th>
+                  <th>Valor</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Dinâmico via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Simulations View -->
+      <section id="simulations" class="content-view">
+        <div class="simulation-header">
+          <h2>Simulações e Previsões</h2>
+          <p>
+            Projete sua saúde financeira ajustando variáveis de gastos e
+            ganhos.
+          </p>
+        </div>
+
+        <div class="simulation-controls">
+          <div class="control-card">
+            <label>Ajuste de Gastos (%)</label>
+            <input type="range" id="sim-expense-range" min="-50" max="50" value="0" step="5" />
+            <div
+              style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">
+              <span>-50% (Economia)</span>
+              <span id="expense-label" style="color: var(--primary); font-weight: bold;">0%</span>
+              <span>+50% (Aumento)</span>
+            </div>
+          </div>
+          <button class="btn-primary" id="run-simulation">
+            <i data-lucide="play"></i> Simular Cenário
+          </button>
+        </div>
+
+        <div id="simulation-summary" style="margin-bottom: 2rem; display: none;">
+          <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+            <div class="stat-card" style="padding: 1rem; flex-direction: column; align-items: flex-start;">
+              <span class="stat-label">Média de Renda</span>
+              <span class="stat-value" id="sim-avg-income" style="font-size: 1.25rem;">R$ 0,00</span>
+            </div>
+            <div class="stat-card" style="padding: 1rem; flex-direction: column; align-items: flex-start;">
+              <span class="stat-label">Gastos Ajustados</span>
+              <span class="stat-value" id="sim-adj-expense" style="font-size: 1.25rem;">R$ 0,00</span>
+            </div>
+            <div class="stat-card" style="padding: 1rem; flex-direction: column; align-items: flex-start;">
+              <span class="stat-label">Lucro Mensal Est.</span>
+              <span class="stat-value" id="sim-monthly-diff" style="font-size: 1.25rem;">R$ 0,00</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="simulation-result">
+          <div class="chart-card full-width">
+            <h3>Projeção para os Próximos 12 Meses</h3>
+            <div class="chart-container-inner">
+              <canvas id="simulationChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- AI Advisor View -->
+      <section id="ai-advisor" class="content-view">
+        <div class="section-header">
+          <h2>Conselheiro Financeiro IA</h2>
+          <p>Análise inteligente baseada nos seus padrões de consumo e renda.</p>
+        </div>
+
+        <div class="ai-container">
+          <div class="ai-hero-card">
+            <div class="ai-avatar-wrapper">
+              <div class="ai-pulse"></div>
+              <i data-lucide="brain-circuit" class="ai-icon"></i>
+            </div>
+            <div class="ai-hero-content">
+              <h3 id="ai-status-title">Pronto para Analisar</h3>
+              <p id="ai-status-desc">Configure sua chave do Gemini para obter conselhos reais baseados em inteligência
+                artificial.</p>
+
+              <div class="api-key-container">
+                <label for="gemini-key">Chave de API Gemini:</label>
+                <div class="api-key-input-wrapper">
+                  <input type="password" id="gemini-key" class="api-key-input" placeholder="Cole sua chave aqui..." />
+                  <button class="btn-secondary" id="save-key-btn">Salvar</button>
+                </div>
+                <small style="margin-top: 5px;">
+                  <a href="https://aistudio.google.com/app/apikey" target="_blank"
+                    style="color: var(--primary); text-decoration: none;">
+                    <i data-lucide="external-link" style="width: 12px; height: 12px; vertical-align: middle;"></i>
+                    Clique aqui para obter sua chave gratuita
+                  </a>
+                </small>
+              </div>
+
+              <div class="api-key-container">
+                <label for="ai-persona-select" style="margin-top: 1rem;">Personalidade da IA:</label>
+                <div class="api-key-input-wrapper">
+                  <select id="ai-persona-select" class="api-key-input"
+                    style="cursor: pointer; padding: 0.6rem; margin-top: 0.2rem;">
+                    <option value="pessoal">Coach Pessoal (Foco em economias familiares)</option>
+                    <option value="mercado">Analista de Mercado (Foco em investimentos e tendências)</option>
+                    <option value="loja">Consultor de Negócios (Foco em lucro e gestão de loja)</option>
+                    <option value="agressivo">Especialista Agressivo (Foco em metas rígidas e cortes)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style="margin-top: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+                <button class="btn-primary ai-analyze-btn" id="run-ai-analysis">
+                  <i data-lucide="wand-2"></i>
+                  Gerar Insights IA
+                </button>
+                <button class="btn-primary ai-chat-open-btn" id="open-ai-chat"
+                  style="background: linear-gradient(135deg, #8b5cf6, #ec4899);">
+                  <i data-lucide="message-circle"></i>
+                  Chat Financeiro IA
+                </button>
+                <button class="btn-primary" id="open-chat-history-modal"
+                  style="background: rgba(255,255,255,0.08); border: 1px solid var(--border);">
+                  <i data-lucide="history"></i>
+                  Histórico de Conversas
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="ai-insights-grid" id="ai-insights-container" style="display: none;">
+            <!-- Cards de insights dinâmicos -->
+          </div>
+        </div>
+      </section>
+
+      <!-- AI Chat Modal -->
+      <div class="ai-chat-overlay" id="ai-chat-overlay">
+        <div class="ai-chat-modal">
+          <div class="ai-chat-header">
+            <div class="ai-chat-header-left">
+              <div class="ai-chat-avatar">
+                <i data-lucide="bot" style="width:22px;height:22px;"></i>
+              </div>
+              <div>
+                <h4>Consultor Financeiro IA</h4>
+                <span class="ai-chat-status"><span class="ai-status-dot"></span> Online</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:0.5rem;align-items:center;">
+              <button class="ai-chat-close" id="btn-new-conversation" title="Nova Conversa"
+                style="border-color: rgba(34,197,94,0.3);">
+                <i data-lucide="plus" style="width:16px;height:16px;color:var(--success);"></i>
+              </button>
+              <button class="ai-chat-close" onclick="clearChatHistory()" title="Apagar conversa"
+                style="border-color: rgba(249,115,22,0.3);">
+                <i data-lucide="trash-2" style="width:16px;height:16px;color:#f97316;"></i>
+              </button>
+              <button class="ai-chat-close" id="close-ai-chat">
+                <i data-lucide="x" style="width:20px;height:20px;"></i>
+              </button>
+            </div>
+          </div>
+          <div class="ai-chat-messages" id="ai-chat-messages">
+            <div class="ai-chat-welcome">
+              <div class="ai-chat-welcome-icon">
+                <i data-lucide="sparkles" style="width:40px;height:40px;color:var(--primary);"></i>
+              </div>
+              <h4>Olá! Sou seu Consultor Financeiro IA</h4>
+              <p>Pergunte qualquer coisa sobre finanças pessoais, investimentos, economia, e mais. Vou te ajudar com
+                conselhos personalizados!</p>
+              <div class="ai-chat-suggestions">
+                <button class="ai-suggestion-chip" data-question="Como posso economizar mais dinheiro?">💰 Como
+                  economizar</button>
+                <button class="ai-suggestion-chip"
+                  data-question="Qual a melhor forma de investir com pouco dinheiro?">📈 Investir</button>
+                <button class="ai-suggestion-chip" data-question="Como organizar meu orçamento mensal?">📊
+                  Orçamento</button>
+                <button class="ai-suggestion-chip" data-question="Quais são os melhores métodos para quitar dívidas?">💳
+                  Quitar dívidas</button>
+              </div>
+            </div>
+          </div>
+          <div class="ai-chat-input-area">
+            <div class="ai-chat-input-wrapper">
+              <input type="text" id="ai-chat-input" placeholder="Digite sua pergunta financeira..."
+                autocomplete="off" />
+              <button class="ai-chat-send" id="ai-chat-send">
+                <i data-lucide="send" style="width:18px;height:18px;"></i>
+              </button>
+            </div>
+            <small
+              style="color:var(--text-muted);margin-top:0.35rem;display:block;text-align:center;font-size:0.7rem;">Powered
+              by Google Gemini • Respostas podem conter erros</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat Conversations History Modal -->
+      <div class="modal" id="chat-history-modal">
+        <div class="modal-content" style="max-width: 600px;">
+          <div class="modal-header">
+            <h2><i data-lucide="message-square"
+                style="width:24px;height:24px;color:var(--primary);vertical-align:middle;margin-right:8px;"></i>Histórico
+              de Conversas</h2>
+            <button class="close-modal" id="close-chat-history-modal">&times;</button>
+          </div>
+          <div id="chat-conversations-list" style="max-height: 60vh; overflow-y: auto;">
+            <!-- Dynamic -->
+          </div>
+          <div style="text-align:center;margin-top:1rem;">
+            <small style="color:var(--text-muted);">Clique em uma conversa para retomá-la no chat</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- History View -->
+      <section id="history" class="content-view">
+        <div class="section-header">
+          <h2>Histórico de Fechamentos</h2>
+          <p>Relatórios consolidados de meses passados.</p>
+        </div>
+        <div class="history-grid" id="history-list">
+          <!-- Cards de histórico dinâmicos -->
+        </div>
+      </section>
+
+      <!-- Expenses View -->
+      <section id="expenses" class="content-view">
+        <div class="section-header">
+          <h2>Lançamentos de Gastos</h2>
+        </div>
+
+        <!-- Table Toolbar -->
+        <div class="table-toolbar">
+          <div class="toolbar-left">
+            <span class="toolbar-count" id="expenses-count">0 registros</span>
+          </div>
+          <div class="toolbar-right">
+            <button class="toolbar-btn toolbar-btn-print" id="btn-print-table" title="Imprimir Tabela">
+              <i data-lucide="printer" style="width:16px;height:16px;"></i>
+              <span>Imprimir</span>
+            </button>
+            <button class="toolbar-btn toolbar-btn-excel" id="btn-export-excel" title="Exportar Excel">
+              <i data-lucide="file-spreadsheet" style="width:16px;height:16px;"></i>
+              <span>Excel</span>
+            </button>
+            <button class="toolbar-btn toolbar-btn-pdf" id="btn-export-pdf" title="Exportar PDF">
+              <i data-lucide="file-text" style="width:16px;height:16px;"></i>
+              <span>PDF</span>
+            </button>
+            <button class="toolbar-btn toolbar-btn-csv" id="btn-export-csv" title="Exportar CSV">
+              <i data-lucide="file-text" style="width:16px;height:16px;"></i>
+              <span>CSV</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="table-container large">
+          <table id="all-expenses-table">
+            <thead>
+              <tr>
+                <th>Descrição</th>
+                <th>Categoria</th>
+                <th>Data</th>
+                <th>Valor</th>
+                <th>Ações</th>
+              </tr>
+              <tr class="filter-row">
+                <th><input type="text" class="column-filter" id="filter-desc" placeholder="Filtrar..." /></th>
+                <th>
+                  <select class="column-filter" id="filter-category">
+                    <option value="">Todas</option>
+                    <option value="Moradia">Moradia</option>
+                    <option value="Alimentação">Alimentação</option>
+                    <option value="Transporte">Transporte</option>
+                    <option value="Lazer">Lazer</option>
+                    <option value="Saúde">Saúde</option>
+                    <option value="Salário">Salário</option>
+                    <option value="Investimentos">Investimentos</option>
+                    <option value="Outros">Outros</option>
+                  </select>
+                </th>
+                <th><input type="date" class="column-filter" id="filter-date" /></th>
+                <th><input type="text" class="column-filter" id="filter-value" placeholder="Filtrar..." /></th>
+                <th><button class="toolbar-btn toolbar-btn-clear" id="btn-clear-filters" title="Limpar filtros"><i
+                      data-lucide="x" style="width:14px;height:14px;"></i></button></th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Dinâmico via JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============================================ -->
+      <!-- GOALS VIEW -->
+      <!-- ============================================ -->
+      <section id="goals" class="content-view">
+        <div class="simulation-header" style="display: flex; justify-content: space-between; align-items: flex-end;">
+          <div>
+            <h2>Minhas Metas</h2>
+            <p>Defina objetivos financeiros e acompanhe seu progresso.</p>
+          </div>
+          <button class="btn-primary" id="new-goal-btn">
+            <i data-lucide="plus"></i> Criar Meta
+          </button>
+        </div>
+
+        <div class="goals-grid" id="goals-container"
+          style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+          <!-- Dinâmico via JS -->
+        </div>
+      </section>
+
+      <!-- ============================================ -->
+      <!-- PROFILE VIEW -->
+      <!-- ============================================ -->
+      <section id="profile" class="content-view">
+        <div class="profile-page">
+          <div class="profile-header-card">
+            <div class="profile-cover"></div>
+            <div class="profile-main-info">
+              <div class="profile-avatar-section">
+                <div class="profile-avatar-large" id="profile-avatar-large">
+                  <span id="profile-avatar-letter">U</span>
+                  <img id="profile-avatar-img" src="" alt="" style="display: none;" />
+                  <div class="profile-avatar-overlay" id="avatar-change-btn">
+                    <i data-lucide="camera"></i>
+                    <span>Alterar</span>
+                  </div>
+                </div>
+              </div>
+              <div class="profile-name-section">
+                <h2 id="profile-display-name">Usuário</h2>
+                <p id="profile-display-email">usuario@email.com</p>
+                <span class="profile-badge" id="profile-provider-badge">
+                  <i data-lucide="shield-check"></i> Conta Local
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="profile-grid">
+            <!-- Info Card -->
+            <div class="profile-card">
+              <div class="profile-card-header">
+                <h3><i data-lucide="user-circle"></i> Informações Pessoais</h3>
+                <button class="btn-text" id="edit-profile-btn">
+                  <i data-lucide="edit-3" style="width: 16px;"></i> Editar
+                </button>
+              </div>
+              <div class="profile-info-grid" id="profile-info-display">
+                <div class="profile-info-item">
+                  <span class="profile-info-label">Nome</span>
+                  <span class="profile-info-value" id="profile-info-name">—</span>
+                </div>
+                <div class="profile-info-item">
+                  <span class="profile-info-label">E-mail</span>
+                  <span class="profile-info-value" id="profile-info-email">—</span>
+                </div>
+                <div class="profile-info-item">
+                  <span class="profile-info-label">Telefone</span>
+                  <span class="profile-info-value" id="profile-info-phone">—</span>
+                </div>
+                <div class="profile-info-item">
+                  <span class="profile-info-label">Data de Nascimento</span>
+                  <span class="profile-info-value" id="profile-info-birthdate">—</span>
+                </div>
+                <div class="profile-info-item">
+                  <span class="profile-info-label">Membro desde</span>
+                  <span class="profile-info-value" id="profile-info-since">—</span>
+                </div>
+              </div>
+
+              <!-- Edit Form (hidden) -->
+              <form id="profile-edit-form" style="display: none;">
+                <div class="form-group">
+                  <label for="profile-edit-name">Nome</label>
+                  <input type="text" id="profile-edit-name" required />
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="profile-edit-phone">Telefone</label>
+                    <input type="tel" id="profile-edit-phone" placeholder="(00) 00000-0000" />
+                  </div>
+                  <div class="form-group">
+                    <label for="profile-edit-birthdate">Data de Nascimento</label>
+                    <input type="date" id="profile-edit-birthdate" />
+                  </div>
+                </div>
+                <div class="profile-form-actions">
+                  <button type="button" class="btn-secondary" id="cancel-profile-edit">Cancelar</button>
+                  <button type="submit" class="btn-primary">
+                    <i data-lucide="check"></i> Salvar Alterações
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Wallets Card -->
+            <div class="profile-card" id="wallets-card">
+              <div class="profile-card-header">
+                <h3><i data-lucide="credit-card"></i> Minhas Contas e Cartões</h3>
+                <button class="btn-text" id="add-wallet-btn">
+                  <i data-lucide="plus" style="width: 16px;"></i> Nova
+                </button>
+              </div>
+              <div id="wallets-list">
+                <!-- Dinâmico via JS -->
+              </div>
+            </div>
+
+            <!-- Security Card -->
+            <div class="profile-card" id="security-card">
+              <div class="profile-card-header">
+                <h3><i data-lucide="shield"></i> Segurança</h3>
+              </div>
+              <form id="password-change-form">
+                <div class="form-group">
+                  <label for="current-password-input">Senha Atual</label>
+                  <input type="password" id="current-password-input" required />
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="new-password-input">Nova Senha</label>
+                    <input type="password" id="new-password-input" required minlength="6" />
+                  </div>
+                  <div class="form-group">
+                    <label for="confirm-new-password">Confirmar Nova Senha</label>
+                    <input type="password" id="confirm-new-password" required minlength="6" />
+                  </div>
+                </div>
+                <div id="password-change-error" class="auth-error" style="display: none; margin-bottom: 1rem;"></div>
+                <button type="submit" class="btn-primary" style="width: 100%;">
+                  <i data-lucide="key"></i>
+                  Alterar Senha
+                </button>
+              </form>
+            </div>
+
+            <!-- Budget Limits Card -->
+            <div class="profile-card" id="budget-limits-card">
+              <div class="profile-card-header">
+                <h3><i data-lucide="pie-chart"></i> Orçamentos Pessoais</h3>
+              </div>
+              <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.9rem;">
+                Defina um limite mensal para cada categoria. Deixe 0 para ficar sem limite.
+              </p>
+              <form id="budget-limits-form">
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="limit-alimentacao">Alimentação (R$)</label>
+                    <input type="number" id="limit-alimentacao" step="0.01" min="0" value="0" />
+                  </div>
+                  <div class="form-group">
+                    <label for="limit-moradia">Moradia (R$)</label>
+                    <input type="number" id="limit-moradia" step="0.01" min="0" value="0" />
+                  </div>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="limit-transporte">Transporte (R$)</label>
+                    <input type="number" id="limit-transporte" step="0.01" min="0" value="0" />
+                  </div>
+                  <div class="form-group">
+                    <label for="limit-lazer">Lazer (R$)</label>
+                    <input type="number" id="limit-lazer" step="0.01" min="0" value="0" />
+                  </div>
+                </div>
+                <!-- You can add more categories if needed, keep it simple for now -->
+                <button type="submit" class="btn-primary" style="width: 100%; margin-top: 1rem;">
+                  <i data-lucide="save"></i>
+                  Salvar Limites
+                </button>
+              </form>
+            </div>
+
+            <!-- Danger Zone -->
+            <div class="profile-card danger-zone-card">
+              <div class="profile-card-header">
+                <h3><i data-lucide="alert-triangle"></i> Zona de Perigo</h3>
+              </div>
+              <p style="color: var(--text-muted); margin-bottom: 1rem;">
+                Ao sair, seus dados continuarão salvos. Você pode entrar novamente a qualquer momento.
+              </p>
+              <button class="btn-danger" id="profile-logout-btn">
+                <i data-lucide="log-out"></i>
+                Sair da Conta
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Salary Modal -->
+    <div class="modal" id="salary-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Configurar Salário Base</h2>
+          <button class="close-modal" id="close-salary-modal">&times;</button>
+        </div>
+        <form id="salary-form">
+          <div class="form-group">
+            <label for="salary-input">Valor Mensal (R$)</label>
+            <input type="number" id="salary-input" step="0.01" required placeholder="Ex: 5.000,00" />
+          </div>
+          <button type="submit" class="btn-submit">Atualizar Salário</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Expense Modal -->
+    <div class="modal" id="expense-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Registrar Novo Lançamento</h2>
+          <button class="close-modal" id="close-expense-modal">&times;</button>
+        </div>
+        <form id="expense-form">
+          <div class="form-group" style="position: relative;">
+            <label for="desc">Descrição</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="text" id="desc" required placeholder="Ex: Aluguel, Supermercado" style="flex: 1;" />
+              <button type="button" class="btn-secondary" id="ocr-upload-btn" title="Ler Cupom com IA"
+                style="padding: 0 12px; display: flex; align-items: center; justify-content: center;">
+                <i data-lucide="scan-line" style="width: 20px; height: 20px;"></i>
+              </button>
+            </div>
+            <input type="file" id="ocr-file-input" accept="image/*" style="display: none;" />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="amount">Valor (R$)</label>
+              <input type="number" id="amount" step="0.01" required placeholder="0,00" />
+            </div>
+            <div class="form-group" style="flex: 2;">
+              <label>Tipo</label>
+              <div class="type-toggle" id="type-toggle-container">
+                <button type="button" class="type-btn active" data-value="expense" id="btn-type-expense">
+                  <i data-lucide="arrow-down-circle" style="width: 18px; height: 18px; margin-right: 4px;"></i> Despesa
+                </button>
+                <button type="button" class="type-btn" data-value="income" id="btn-type-income">
+                  <i data-lucide="arrow-up-circle" style="width: 18px; height: 18px; margin-right: 4px;"></i> Receita
+                </button>
+              </div>
+              <input type="hidden" id="type" value="expense" />
+            </div>
+            <div class="form-group">
+              <label for="wallet">Carteira/Conta</label>
+              <select id="wallet">
+                <option value="default">Carteira Principal</option>
+                <!-- Dinâmico via JS -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="expense-type">Categoria do Gasto</label>
+              <select id="expense-type">
+                <option value="variable">Variável (Pontual)</option>
+                <option value="fixed">Fixo (Mensal)</option>
+                <option value="debt">Dívida / Parcelado</option>
+              </select>
+            </div>
+          </div>
+          <div id="installments-group" class="form-row" style="display: none;">
+            <div class="form-group">
+              <label for="current-installment">Parcela Atual</label>
+              <input type="number" id="current-installment" value="1" min="1">
+            </div>
+            <div class="form-group">
+              <label for="total-installments">Total de Parcelas</label>
+              <input type="number" id="total-installments" value="1" min="1">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="category">Categoria</label>
+              <select id="category">
+                <option value="Moradia">Moradia</option>
+                <option value="Alimentação">Alimentação</option>
+                <option value="Transporte">Transporte</option>
+                <option value="Lazer">Lazer</option>
+                <option value="Saúde">Saúde</option>
+                <option value="Salário">Salário</option>
+                <option value="Investimentos">Investimentos</option>
+                <option value="Outros">Outros</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="date">Data</label>
+              <input type="date" id="date" required />
+            </div>
+          </div>
+          <button type="submit" class="btn-submit">Salvar Registro</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Goal Modal -->
+    <div class="modal" id="goal-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Criar Nova Meta</h2>
+          <button class="close-modal" id="close-goal-modal">&times;</button>
+        </div>
+        <form id="goal-form">
+          <div class="form-group">
+            <label for="goal-name">Nome da Meta</label>
+            <input type="text" id="goal-name" required placeholder="Ex: Viagem de Férias, Carro Novo" />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="goal-target">Valor Alvo (R$)</label>
+              <input type="number" id="goal-target" step="0.01" required placeholder="5000,00" />
+            </div>
+            <div class="form-group">
+              <label for="goal-current">Valor Já Guardado (R$)</label>
+              <input type="number" id="goal-current" step="0.01" value="0.00" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="goal-deadline">Data Limite (Opcional)</label>
+            <input type="date" id="goal-deadline" />
+          </div>
+          <button type="submit" class="btn-submit">Salvar Meta</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Wallet Modal -->
+    <div class="modal" id="wallet-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Nova Carteira/Conta</h2>
+          <button class="close-modal" id="close-wallet-modal">&times;</button>
+        </div>
+        <form id="wallet-form">
+          <div class="form-group">
+            <label for="wallet-name">Nome da Carteira</label>
+            <input type="text" id="wallet-name" required placeholder="Ex: Nubank, Carteira Física" />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="wallet-type">Tipo</label>
+              <select id="wallet-type">
+                <option value="checking">Conta Corrente</option>
+                <option value="credit">Cartão de Crédito</option>
+                <option value="cash">Dinheiro Físico</option>
+                <option value="savings">Poupança/Investimento</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="wallet-color">Cor de Identificação</label>
+              <input type="color" id="wallet-color" value="#6366f1" style="height: 42px; padding: 2px;" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="wallet-initial">Saldo Inicial (R$)</label>
+            <input type="number" id="wallet-initial" step="0.01" value="0.00" />
+          </div>
+          <button type="submit" class="btn-submit">Salvar Carteira</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Avatar Modal (Camera / Upload) -->
+    <div class="modal" id="avatar-modal">
+      <div class="modal-content" style="max-width: 550px;">
+        <div class="modal-header">
+          <h2>Alterar Foto de Perfil</h2>
+          <button class="close-modal" id="close-avatar-modal">&times;</button>
+        </div>
+
+        <div class="avatar-modal-body">
+          <!-- Preview -->
+          <div class="avatar-preview-container">
+            <div class="avatar-preview-circle" id="avatar-preview-circle">
+              <span id="avatar-preview-letter">U</span>
+              <img id="avatar-preview-img" src="" alt="" style="display: none;" />
+            </div>
+          </div>
+
+          <!-- Camera Feed (hidden initially) -->
+          <div id="camera-container" style="display: none;">
+            <video id="camera-feed" autoplay playsinline
+              style="width: 100%; border-radius: 1rem; background: #000;"></video>
+            <canvas id="camera-canvas" style="display: none;"></canvas>
+            <div class="camera-actions">
+              <button class="btn-primary" id="capture-photo-btn">
+                <i data-lucide="camera"></i> Capturar
+              </button>
+              <button class="btn-secondary" id="stop-camera-btn">
+                <i data-lucide="x"></i> Cancelar
+              </button>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="avatar-action-buttons" id="avatar-action-buttons">
+            <button class="avatar-option-btn" id="upload-photo-btn">
+              <div class="avatar-option-icon">
+                <i data-lucide="upload"></i>
+              </div>
+              <div>
+                <strong>Enviar Imagem</strong>
+                <small>JPG, PNG ou WebP</small>
+              </div>
+            </button>
+            <button class="avatar-option-btn" id="take-photo-btn">
+              <div class="avatar-option-icon camera-icon">
+                <i data-lucide="camera"></i>
+              </div>
+              <div>
+                <strong>Tirar Foto</strong>
+                <small>Usar câmera do dispositivo</small>
+              </div>
+            </button>
+            <button class="avatar-option-btn remove" id="remove-photo-btn">
+              <div class="avatar-option-icon remove-icon">
+                <i data-lucide="trash-2"></i>
+              </div>
+              <div>
+                <strong>Remover Foto</strong>
+                <small>Voltar ao avatar padrão</small>
+              </div>
+            </button>
+          </div>
+
+          <input type="file" id="avatar-file-input" accept="image/jpeg,image/png,image/webp" style="display: none;" />
+
+          <button class="btn-primary" id="save-avatar-btn" style="width: 100%; margin-top: 1rem; display: none;">
+            <i data-lucide="check"></i> Salvar Foto
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="js/auth.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+
+</html>
