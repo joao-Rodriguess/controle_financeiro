@@ -1618,13 +1618,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const multiplier = 1 + (parseInt(simRange.value) || 0) / 100;
       
-      // 1. Obter dados acumulados do histórico (state.history)
-      const historyList = state.history || [];
-      const numHistoryMonths = historyList.length;
-      const totalHistoryIncome = historyList.reduce((acc, h) => acc + Number(h.income || 0), 0);
-      const totalHistoryExpenses = historyList.reduce((acc, h) => acc + Number(h.expenses || 0), 0);
-
-      // 2. Obter dados do mês corrente (state.transactions)
+      // 1. Obter dados do mês corrente (state.transactions e state.salary)
       const currentExtraIncome = (state.transactions || [])
         .filter((t) => t.type === "income")
         .reduce((acc, t) => acc + Number(t.amount || 0), 0);
@@ -1634,19 +1628,14 @@ document.addEventListener("DOMContentLoaded", () => {
         .filter((t) => t.type === "expense")
         .reduce((acc, t) => acc + Number(t.amount || 0), 0);
 
-      // 3. Calcular a média mensal real combinando histórico e mês corrente
-      const totalMonths = numHistoryMonths + 1;
-      const avgIncome = (totalHistoryIncome + currentIncome) / totalMonths;
-      const avgExpenses = (totalHistoryExpenses + currentExpenses) / totalMonths;
-
-      // 4. Aplicar o multiplicador do slider sobre a média total de despesas
-      const totalAdjustedExpense = avgExpenses * multiplier;
-      const monthlyDiff = avgIncome - totalAdjustedExpense;
+      // 2. Aplicar o multiplicador do slider sobre o total de despesas do mês ativo
+      const totalAdjustedExpense = currentExpenses * multiplier;
+      const monthlyDiff = currentIncome - totalAdjustedExpense;
 
       const summary = document.getElementById("simulation-summary");
       if (summary) {
         summary.style.display = "block";
-        document.getElementById("sim-avg-income").textContent = formatCurrency(avgIncome);
+        document.getElementById("sim-avg-income").textContent = formatCurrency(currentIncome);
         document.getElementById("sim-adj-expense").textContent = formatCurrency(totalAdjustedExpense);
         document.getElementById("sim-monthly-diff").textContent = formatCurrency(monthlyDiff);
         document.getElementById("sim-monthly-diff").style.color = monthlyDiff >= 0 ? "var(--success)" : "var(--danger)";
@@ -1657,15 +1646,10 @@ document.addEventListener("DOMContentLoaded", () => {
         "Mês 7", "Mês 8", "Mês 9", "Mês 10", "Mês 11", "Mês 12",
       ];
       
-      // 5. Calcular o saldo inicial real (histórico acumulado + saldo consolidado do mês ativo)
-      const historyAccumulated = historyList.reduce((acc, h) => acc + Number(h.balance || 0), 0);
-      const currentActualBalance = currentIncome - currentExpenses;
-      const startingBalance = historyAccumulated + currentActualBalance;
-
       const simulatedBalance = [];
-      // Projetar saldo acumulado considerando o resultado mensal estipulado
+      // Projetar lucro/prejuízo acumulado puro considerando o resultado mensal estipulado
       for (let i = 0; i < 12; i++) {
-        simulatedBalance.push(startingBalance + (monthlyDiff * (i + 1)));
+        simulatedBalance.push(monthlyDiff * (i + 1));
       }
 
       if (typeof Chart === 'undefined') {
