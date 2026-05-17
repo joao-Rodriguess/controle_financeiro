@@ -1618,22 +1618,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const multiplier = 1 + (parseInt(simRange.value) || 0) / 100;
       
-      // Safe calculations with Number() conversion
-      const avgIncome = Number(state.salary || 0) + (state.transactions || [])
+      // 1. Obter dados acumulados do histórico (state.history)
+      const historyList = state.history || [];
+      const numHistoryMonths = historyList.length;
+      const totalHistoryIncome = historyList.reduce((acc, h) => acc + Number(h.income || 0), 0);
+      const totalHistoryExpenses = historyList.reduce((acc, h) => acc + Number(h.expenses || 0), 0);
+
+      // 2. Obter dados do mês corrente (state.transactions)
+      const currentExtraIncome = (state.transactions || [])
         .filter((t) => t.type === "income")
         .reduce((acc, t) => acc + Number(t.amount || 0), 0);
-        
-      // Separate expenses. Legacy expenses without expenseType are considered variable.
-      const variableExpenses = (state.transactions || [])
-        .filter((t) => t.type === "expense" && (!t.expenseType || t.expenseType === "variable"))
+      const currentIncome = Number(state.salary || 0) + currentExtraIncome;
+
+      const currentExpenses = (state.transactions || [])
+        .filter((t) => t.type === "expense")
         .reduce((acc, t) => acc + Number(t.amount || 0), 0);
 
-      const fixedExpenses = (state.transactions || [])
-        .filter((t) => t.type === "expense" && t.expenseType && t.expenseType !== "variable")
-        .reduce((acc, t) => acc + Number(t.amount || 0), 0);
+      // 3. Calcular a média mensal real combinando histórico e mês corrente
+      const totalMonths = numHistoryMonths + 1;
+      const avgIncome = (totalHistoryIncome + currentIncome) / totalMonths;
+      const avgExpenses = (totalHistoryExpenses + currentExpenses) / totalMonths;
 
-      const adjustedVariableExpense = variableExpenses * multiplier;
-      const totalAdjustedExpense = fixedExpenses + adjustedVariableExpense;
+      // 4. Aplicar o multiplicador do slider sobre a média total de despesas
+      const totalAdjustedExpense = avgExpenses * multiplier;
       const monthlyDiff = avgIncome - totalAdjustedExpense;
 
       const summary = document.getElementById("simulation-summary");
@@ -1650,13 +1657,13 @@ document.addEventListener("DOMContentLoaded", () => {
         "Mês 7", "Mês 8", "Mês 9", "Mês 10", "Mês 11", "Mês 12",
       ];
       
-      // Calculate real starting balance by accumulating history + current actual balance
-      const currentActualBalance = avgIncome - (variableExpenses + fixedExpenses);
-      const historyAccumulated = (state.history || []).reduce((acc, h) => acc + Number(h.balance || 0), 0);
+      // 5. Calcular o saldo inicial real (histórico acumulado + saldo consolidado do mês ativo)
+      const historyAccumulated = historyList.reduce((acc, h) => acc + Number(h.balance || 0), 0);
+      const currentActualBalance = currentIncome - currentExpenses;
       const startingBalance = historyAccumulated + currentActualBalance;
 
       const simulatedBalance = [];
-      // Project balance considering the adjusted monthly diff
+      // Projetar saldo acumulado considerando o resultado mensal estipulado
       for (let i = 0; i < 12; i++) {
         simulatedBalance.push(startingBalance + (monthlyDiff * (i + 1)));
       }
