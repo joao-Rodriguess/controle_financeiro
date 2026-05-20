@@ -361,26 +361,43 @@
 
       <!-- Dashboard View -->
       <section id="dashboard" class="content-view active">
-        <div class="stats-grid">
-          <div class="stat-card income">
-            <div class="stat-icon"><i data-lucide="arrow-up-right"></i></div>
-            <div class="stat-content">
-              <span class="stat-label">Renda Mensal</span>
-              <span class="stat-value" id="total-income" aria-live="polite">R$ 0,00</span>
+        <div class="flow-summary-bar" style="display: flex; gap: 1.5rem; background: var(--bg-card); padding: 0.8rem 1.5rem; border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid var(--border); font-size: 0.9rem; align-items: center; flex-wrap: wrap;">
+          <span style="color: var(--text-muted); font-weight: 600; font-family: 'Outfit', sans-serif;">FLUXO ORDINÁRIO DO MÊS:</span>
+          <span style="color: #6366f1; display: flex; align-items: center; gap: 6px; font-weight: 500;">
+            <i data-lucide="arrow-up-right" style="width: 16px; height: 16px;"></i> Renda Total: <strong id="total-income" style="font-weight: 700;">R$ 0,00</strong>
+          </span>
+          <span style="color: var(--danger); display: flex; align-items: center; gap: 6px; font-weight: 500;">
+            <i data-lucide="arrow-down-left" style="width: 16px; height: 16px;"></i> Gastos Totais: <strong id="total-expenses" style="font-weight: 700;">R$ 0,00</strong>
+          </span>
+        </div>
+
+        <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+          <div class="stat-card balance" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; display: flex; align-items: center; gap: 1rem; transition: transform 0.3s ease, box-shadow 0.3s ease;">
+            <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: #6366f1; width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;"><i data-lucide="wallet"></i></div>
+            <div class="stat-content" style="display: flex; flex-direction: column;">
+              <span class="stat-label" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Saldo Disponível</span>
+              <span class="stat-value" id="current-balance" aria-live="polite" style="font-size: 1.5rem; font-weight: 700; color: var(--text-main);">R$ 0,00</span>
             </div>
           </div>
-          <div class="stat-card expense">
-            <div class="stat-icon"><i data-lucide="arrow-down-left"></i></div>
-            <div class="stat-content">
-              <span class="stat-label">Gastos Totais</span>
-              <span class="stat-value" id="total-expenses" aria-live="polite">R$ 0,00</span>
+          <div class="stat-card assets" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; display: flex; align-items: center; gap: 1rem; transition: transform 0.3s ease, box-shadow 0.3s ease;">
+            <div class="stat-icon" style="background: rgba(34, 197, 94, 0.1); color: var(--success); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;"><i data-lucide="trending-up"></i></div>
+            <div class="stat-content" style="display: flex; flex-direction: column;">
+              <span class="stat-label" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Patrimônio Investido</span>
+              <span class="stat-value" id="invested-assets" aria-live="polite" style="font-size: 1.5rem; font-weight: 700; color: var(--success);">R$ 0,00</span>
             </div>
           </div>
-          <div class="stat-card balance">
-            <div class="stat-icon"><i data-lucide="wallet"></i></div>
-            <div class="stat-content">
-              <span class="stat-label">Saldo Atual</span>
-              <span class="stat-value" id="current-balance" aria-live="polite">R$ 0,00</span>
+          <div class="stat-card liabilities" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; display: flex; align-items: center; gap: 1rem; transition: transform 0.3s ease, box-shadow 0.3s ease;">
+            <div class="stat-icon" style="background: rgba(239, 68, 68, 0.1); color: var(--danger); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;"><i data-lucide="shield-alert"></i></div>
+            <div class="stat-content" style="display: flex; flex-direction: column;">
+              <span class="stat-label" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Passivos & Dívidas</span>
+              <span class="stat-value" id="liabilities-debts" aria-live="polite" style="font-size: 1.5rem; font-weight: 700; color: var(--danger);">R$ 0,00</span>
+            </div>
+          </div>
+          <div class="stat-card passive" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; display: flex; align-items: center; gap: 1rem; transition: transform 0.3s ease, box-shadow 0.3s ease;">
+            <div class="stat-icon" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6; width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;"><i data-lucide="coins"></i></div>
+            <div class="stat-content" style="display: flex; flex-direction: column;">
+              <span class="stat-label" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Renda Passiva Mensal</span>
+              <span class="stat-value" id="passive-income" aria-live="polite" style="font-size: 1.5rem; font-weight: 700; color: #a78bfa;">R$ 0,00</span>
             </div>
           </div>
         </div>
@@ -1012,6 +1029,175 @@
               <input type="date" id="date" required />
             </div>
           </div>
+
+          <!-- Premium Advanced Financial Operations Switch -->
+          <div class="form-group" style="margin-top: 1.25rem; margin-bottom: 1.25rem; background: rgba(99, 102, 241, 0.05); padding: 14px; border-radius: 12px; border: 1px solid rgba(99, 102, 241, 0.2); transition: all 0.3s ease;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+              <span style="font-weight: 600; color: #a5b4fc; display: flex; align-items: center; gap: 8px; font-family: 'Outfit', sans-serif;">
+                <i data-lucide="sparkles" style="width: 18px; height: 18px; color: #818cf8;"></i> Operação Financeira Especial (Consórcio, Bolsa, Financiamento)
+              </span>
+              <label class="premium-switch" style="position: relative; display: inline-block; width: 50px; height: 26px;">
+                <input type="checkbox" id="advanced-toggle" style="opacity: 0; width: 0; height: 0;" />
+                <span class="premium-slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.1); transition: .4s; border-radius: 34px; border: 1px solid var(--border);"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Advanced Fields Container -->
+          <div id="advanced-fields-container" style="display: none; background: rgba(15, 23, 42, 0.4); border: 1px solid var(--border); padding: 1.25rem; border-radius: 12px; margin-bottom: 1.25rem; border-left: 4px solid #6366f1;">
+            <div class="form-group" style="margin-bottom: 1.25rem;">
+              <label for="advanced-type" style="font-size: 0.85rem; color: #a5b4fc; font-weight: 600; text-transform: uppercase; margin-bottom: 6px; display: block;">Modalidade Bancária / Mercado</label>
+              <select id="advanced-type" style="background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: var(--text-main); font-family: 'Outfit', sans-serif; width: 100%; font-size: 0.95rem; cursor: pointer; outline: none; transition: border-color 0.2s;">
+                <option value="fixed_income">📊 Renda Fixa Bancária e Governamental (CDB, LCI, LCA, Tesouro)</option>
+                <option value="variable_income">📈 Bolsa de Valores / Renda Variável (Ações, FIIs, Cripto)</option>
+                <option value="financing">🏢 Financiamentos & Ativos Imobiliários (Tabela SAC / PRICE)</option>
+                <option value="consortium">💎 Consórcios Bancários (Poupança Programada & Contemplação)</option>
+                <option value="credit_loan">🏦 Empréstimos e Amortizações Extraordinárias (Crédito)</option>
+              </select>
+            </div>
+
+            <!-- 1. Renda Fixa Inputs -->
+            <div id="advanced-fixed-income-group" class="advanced-group-section" style="display: none;">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="rf-subtype">Título</label>
+                  <select id="rf-subtype">
+                    <option value="CDB">CDB (Certificado de Depósito Bancário)</option>
+                    <option value="Tesouro Selic">Tesouro Selic (LFT)</option>
+                    <option value="Tesouro IPCA">Tesouro IPCA+ (NTN-B)</option>
+                    <option value="Tesouro Prefixado">Tesouro Prefixado (LTN)</option>
+                    <option value="LCI/LCA">LCI / LCA</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="rf-index">Indexador / Rendimento</label>
+                  <select id="rf-index">
+                    <option value="CDI">Pós-fixado (% do CDI)</option>
+                    <option value="IPCA">IPCA + Taxa Fixa</option>
+                    <option value="SELIC">Taxa Selic + Spread</option>
+                    <option value="PRE">Prefixado (% Fixa ao ano)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row" style="margin-top: 0.75rem;">
+                <div class="form-group">
+                  <label for="rf-rate">Rentabilidade (% a.a. ou % CDI)</label>
+                  <input type="number" id="rf-rate" step="0.01" placeholder="Ex: 110 (do CDI) ou 12.5 (a.a.)" style="width: 100%;" />
+                </div>
+                <div class="form-group">
+                  <label for="rf-maturity">Data de Vencimento</label>
+                  <input type="date" id="rf-maturity" style="width: 100%;" />
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. Renda Variável Inputs -->
+            <div id="advanced-variable-income-group" class="advanced-group-section" style="display: none;">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="rv-ticker">Ticker / Código do Ativo</label>
+                  <input type="text" id="rv-ticker" placeholder="Ex: PETR4, MXRF11, BTC" style="text-transform: uppercase; width: 100%;" />
+                </div>
+                <div class="form-group">
+                  <label for="rv-operation">Operação</label>
+                  <select id="rv-operation">
+                    <option value="buy">🛒 Compra de Ativos</option>
+                    <option value="sell">💰 Venda de Ativos</option>
+                    <option value="dividend">🪙 Proventos / Dividendos Recebidos</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row" style="margin-top: 0.75rem;">
+                <div class="form-group">
+                  <label for="rv-qty">Quantidade</label>
+                  <input type="number" id="rv-qty" step="0.0001" placeholder="0" style="width: 100%;" />
+                </div>
+                <div class="form-group">
+                  <label for="rv-price">Preço Unitário (R$)</label>
+                  <input type="number" id="rv-price" step="0.01" placeholder="0.00" style="width: 100%;" />
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. Financiamentos Inputs -->
+            <div id="advanced-financing-group" class="advanced-group-section" style="display: none;">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="fin-operation">Operação Imobiliária/Crédito</label>
+                  <select id="fin-operation">
+                    <option value="financing">🏢 Financiamento Ativo</option>
+                    <option value="purchase">🏠 Aquisição de Bem À Vista</option>
+                    <option value="rent_in">🔑 Aluguel Recebido (Receita)</option>
+                    <option value="rent_out">🏠 Aluguel Pago (Despesa)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="fin-amort">Tabela de Amortização</label>
+                  <select id="fin-amort">
+                    <option value="SAC">SAC (Amortização Constante)</option>
+                    <option value="PRICE">PRICE (Parcelas Fixas)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-row" style="margin-top: 0.75rem;">
+                <div class="form-group">
+                  <label for="fin-rate">Taxa de Juros Nominal (% a.a.)</label>
+                  <input type="number" id="fin-rate" step="0.01" placeholder="Ex: 9.5" style="width: 100%;" />
+                </div>
+                <div class="form-group">
+                  <label for="fin-term">Prazo Total (Meses)</label>
+                  <input type="number" id="fin-term" placeholder="Ex: 360" style="width: 100%;" />
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. Consórcios Inputs -->
+            <div id="advanced-consortium-group" class="advanced-group-section" style="display: none;">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="cons-value">Carta de Crédito (R$)</label>
+                  <input type="number" id="cons-value" step="0.01" placeholder="0.00" style="width: 100%;" />
+                </div>
+                <div class="form-group">
+                  <label for="cons-admin">Taxa de Administração (%)</label>
+                  <input type="number" id="cons-admin" step="0.01" placeholder="Ex: 15" style="width: 100%;" />
+                </div>
+              </div>
+              <div class="form-row" style="margin-top: 0.75rem;">
+                <div class="form-group">
+                  <label for="cons-reserve">Fundo de Reserva (%)</label>
+                  <input type="number" id="cons-reserve" step="0.01" placeholder="Ex: 2" style="width: 100%;" />
+                </div>
+                <div class="form-group">
+                  <label for="cons-status">Estado de Contemplação</label>
+                  <select id="cons-status">
+                    <option value="waiting">⏳ Aguardando Contemplação</option>
+                    <option value="contemplated">✨ Contemplado (Ativo Liberado)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- 5. Empréstimos e Amortizações Extraordinárias Inputs -->
+            <div id="advanced-loan-group" class="advanced-group-section" style="display: none;">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="loan-op">Operação de Crédito</label>
+                  <select id="loan-op">
+                    <option value="take">Tomada de Empréstimo</option>
+                    <option value="pay">Parcela Ordinária</option>
+                    <option value="extra_term">⚡ Amortização Extra (Reduzir Prazo)</option>
+                    <option value="extra_value">⚡ Amortização Extra (Reduzir Parcela)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="loan-rate">Taxa de Juros (% a.m.)</label>
+                  <input type="number" id="loan-rate" step="0.01" placeholder="Ex: 2.5" style="width: 100%;" />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <button type="submit" class="btn-submit">Salvar Registro</button>
         </form>
       </div>
@@ -1078,6 +1264,10 @@
           <div class="form-group">
             <label for="wallet-initial">Saldo Inicial (R$)</label>
             <input type="number" id="wallet-initial" step="0.01" value="0.00" />
+          </div>
+          <div class="form-group" id="wallet-overdraft-group">
+            <label for="wallet-overdraft">Limite de Cheque Especial (R$)</label>
+            <input type="number" id="wallet-overdraft" step="0.01" value="0.00" placeholder="Ex: 500.00" />
           </div>
           <button type="submit" class="btn-submit">Salvar Carteira</button>
         </form>

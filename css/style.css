@@ -3357,14 +3357,91 @@ select:focus-visible {
   animation: modalEnter 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@keyframes modalEnter {
+}
+
+/* ============================================
+   PREMIUM ADVANCED SWITCH & STYLES
+   ============================================ */
+.premium-switch input:checked + .premium-slider {
+  background-color: var(--primary) !important;
+}
+
+.premium-switch input:checked + .premium-slider::before {
+  transform: translateX(24px) !important;
+  background-color: #ffffff !important;
+}
+
+.premium-slider::before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: #94a3b8;
+  transition: .4s;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.premium-switch input:focus + .premium-slider {
+  box-shadow: 0 0 1px var(--primary);
+}
+
+@keyframes slideDown {
   from {
     opacity: 0;
-    transform: scale(0.92) translateY(20px);
+    transform: translateY(-8px);
   }
-
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translateY(0);
   }
+}
+
+.advanced-group-section {
+  animation: slideDown 0.25s ease-out;
+  padding: 10px 0 5px 0;
+}
+
+.advanced-group-section .form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.advanced-group-section label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.advanced-group-section select,
+.advanced-group-section input {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--text-main);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.advanced-group-section select:focus,
+.advanced-group-section input:focus {
+  border-color: var(--primary);
+}
+
+/* Overdraft glow styling */
+.stat-card.overdraft-active {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(15, 23, 42, 0.4) 100%) !important;
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.15) !important;
+}
+
+.stat-card.overdraft-active .stat-value {
+  color: #f87171 !important;
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
 }

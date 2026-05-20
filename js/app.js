@@ -360,7 +360,7 @@ document.addEventListener("DOMContentLoaded", () => {
         
         if (profile.chat_conversations) {
           chatConversations = profile.chat_conversations || [];
-          renderChatConversationsList();
+          renderConversationsList();
         }
       } else {
         // Initialize if first time
@@ -433,6 +433,55 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const expenseTypeSelect = document.getElementById("expense-type");
   const installmentsGroup = document.getElementById("installments-group");
+
+  // Advanced Financial Fields
+  const advancedToggle = document.getElementById("advanced-toggle");
+  const advancedFieldsContainer = document.getElementById("advanced-fields-container");
+  const advancedTypeSelect = document.getElementById("advanced-type");
+  
+  const advancedGroups = {
+    fixed_income: document.getElementById("advanced-fixed-income-group"),
+    variable_income: document.getElementById("advanced-variable-income-group"),
+    financing: document.getElementById("advanced-financing-group"),
+    consortium: document.getElementById("advanced-consortium-group"),
+    credit_loan: document.getElementById("advanced-loan-group")
+  };
+
+  function updateAdvancedFieldsUI() {
+    if (advancedToggle && advancedToggle.checked) {
+      if (advancedFieldsContainer) advancedFieldsContainer.style.display = "block";
+      const selectedType = advancedTypeSelect ? advancedTypeSelect.value : "fixed_income";
+      for (const [type, group] of Object.entries(advancedGroups)) {
+        if (group) {
+          group.style.display = (type === selectedType) ? "block" : "none";
+        }
+      }
+    } else {
+      if (advancedFieldsContainer) advancedFieldsContainer.style.display = "none";
+      for (const group of Object.values(advancedGroups)) {
+        if (group) group.style.display = "none";
+      }
+    }
+  }
+
+  if (advancedToggle) {
+    advancedToggle.addEventListener("change", updateAdvancedFieldsUI);
+  }
+  if (advancedTypeSelect) {
+    advancedTypeSelect.addEventListener("change", updateAdvancedFieldsUI);
+  }
+
+  function resetAdvancedInputs() {
+    if (!advancedFieldsContainer) return;
+    const inputs = advancedFieldsContainer.querySelectorAll("input, select");
+    inputs.forEach(input => {
+      if (input.tagName === "SELECT") {
+        input.selectedIndex = 0;
+      } else {
+        input.value = "";
+      }
+    });
+  }
 
   // Charts Instances
   let mainChart, pieChart, simChart;
@@ -511,6 +560,12 @@ document.addEventListener("DOMContentLoaded", () => {
     btnSubmitExpense.textContent = "Salvar Registro";
     expenseForm.reset();
     installmentsGroup.style.display = "none";
+    
+    if (advancedToggle) {
+      advancedToggle.checked = false;
+      updateAdvancedFieldsUI();
+      resetAdvancedInputs();
+    }
 
     // Refresh the wallets select in the modal
     renderWalletsSelect();
@@ -529,6 +584,10 @@ document.addEventListener("DOMContentLoaded", () => {
     walletForm.reset();
     document.getElementById("wallet-color").value = "#6366f1";
     document.getElementById("wallet-initial").value = "0.00";
+    
+    const overdraftInput = document.getElementById("wallet-overdraft");
+    if (overdraftInput) overdraftInput.value = "0.00";
+
     walletModal.classList.add("active");
   });
 
@@ -784,6 +843,37 @@ document.addEventListener("DOMContentLoaded", () => {
     const type = document.getElementById("type").value;
     const expenseType = document.getElementById("expense-type").value;
 
+    let advancedData = null;
+    if (advancedToggle && advancedToggle.checked) {
+      const advType = advancedTypeSelect ? advancedTypeSelect.value : "fixed_income";
+      advancedData = { type: advType };
+      
+      if (advType === "fixed_income") {
+        advancedData.subtype = document.getElementById("rf-subtype").value;
+        advancedData.index = document.getElementById("rf-index").value;
+        advancedData.rate = parseFloat(document.getElementById("rf-rate").value) || 0;
+        advancedData.maturity = document.getElementById("rf-maturity").value;
+      } else if (advType === "variable_income") {
+        advancedData.ticker = document.getElementById("rv-ticker").value.toUpperCase();
+        advancedData.operation = document.getElementById("rv-operation").value;
+        advancedData.qty = parseFloat(document.getElementById("rv-qty").value) || 0;
+        advancedData.price = parseFloat(document.getElementById("rv-price").value) || 0;
+      } else if (advType === "financing") {
+        advancedData.operation = document.getElementById("fin-operation").value;
+        advancedData.amort = document.getElementById("fin-amort").value;
+        advancedData.rate = parseFloat(document.getElementById("fin-rate").value) || 0;
+        advancedData.term = parseInt(document.getElementById("fin-term").value) || 0;
+      } else if (advType === "consortium") {
+        advancedData.value = parseFloat(document.getElementById("cons-value").value) || 0;
+        advancedData.admin = parseFloat(document.getElementById("cons-admin").value) || 0;
+        advancedData.reserve = parseFloat(document.getElementById("cons-reserve").value) || 0;
+        advancedData.status = document.getElementById("cons-status").value;
+      } else if (advType === "credit_loan") {
+        advancedData.operation = document.getElementById("loan-op").value;
+        advancedData.rate = parseFloat(document.getElementById("loan-rate").value) || 0;
+      }
+    }
+
     const transactionData = {
       desc: document.getElementById("desc").value,
       amount: parseFloat(document.getElementById("amount").value),
@@ -796,7 +886,8 @@ document.addEventListener("DOMContentLoaded", () => {
       installments: (type === 'expense' && expenseType === 'debt') ? {
         current: parseInt(document.getElementById("current-installment").value),
         total: parseInt(document.getElementById("total-installments").value)
-      } : null
+      } : null,
+      advanced: advancedData
     };
 
     try {
@@ -824,81 +915,6 @@ document.addEventListener("DOMContentLoaded", () => {
       showToast("Erro ao salvar no Firebase.", "error");
     }
   });
-
-  walletForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const user = auth.currentUser;
-    if (!user) return;
-
-    const name = document.getElementById("wallet-name").value;
-    const type = document.getElementById("wallet-type").value;
-    const color = document.getElementById("wallet-color").value;
-    const initialBalance = parseFloat(document.getElementById("wallet-initial").value) || 0;
-
-    const walletData = { name, type, color, initialBalance };
-
-    try {
-      showToast("Salvando carteira...", "info");
-      if (editingWalletId) {
-        await update(ref(db, `users/${user.uid}/wallets/${editingWalletId}`), walletData);
-        const index = state.wallets.findIndex(w => w.id === editingWalletId);
-        state.wallets[index] = { ...walletData, id: editingWalletId };
-      } else {
-        const newRef = push(ref(db, `users/${user.uid}/wallets`));
-        await set(newRef, walletData);
-        state.wallets.push({ id: newRef.key, ...walletData });
-      }
-
-      updateDashboard();
-      renderDashboardWallets();
-      walletModal.classList.remove("active");
-      walletForm.reset();
-      editingWalletId = null;
-      showToast("Carteira salva com sucesso!", "success");
-    } catch (err) {
-      console.error(err);
-      showToast("Erro ao salvar carteira no Firebase.", "error");
-    }
-  });
-
-  window.editWallet = (id) => {
-    const w = state.wallets.find(w => w.id === id);
-    if (!w) return;
-    editingWalletId = id;
-    document.querySelector("#wallet-modal h2").textContent = "Editar Carteira";
-    document.querySelector("#wallet-form .btn-submit").textContent = "Atualizar Carteira";
-    document.getElementById("wallet-name").value = w.name;
-    document.getElementById("wallet-type").value = w.type;
-    document.getElementById("wallet-color").value = w.color;
-    document.getElementById("wallet-initial").value = w.initialBalance || 0;
-    walletModal.classList.add("active");
-  };
-
-  window.deleteWallet = async (id) => {
-    const user = auth.currentUser;
-    if (!user) return;
-    if (confirm("Deseja realmente excluir esta carteira? Lançamentos associados podem ficar sem carteira padrão.")) {
-      try {
-        await remove(ref(db, `users/${user.uid}/wallets/${id}`));
-        
-        state.wallets = state.wallets.filter(w => w.id !== id);
-        
-        // Update transactions that were linked to this wallet
-        // In a real app, you might want to do this on the server or batch update
-        state.transactions = state.transactions.map(t => {
-          if (t.walletId === id) return { ...t, walletId: 'default' };
-          return t;
-        });
-
-        updateDashboard();
-        renderDashboardWallets();
-        showToast("Carteira excluída", "success");
-      } catch (err) {
-        console.error(err);
-        showToast("Erro ao excluir carteira", "error");
-      }
-    }
-  };
 
   // --- Logout ---
   document.getElementById("logout-btn").addEventListener("click", () => {
@@ -943,10 +959,14 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateDashboard() {
+    // Rendas ordinárias (incluindo salário e transações de tipo income que não sejam proventos/dividendos de investimentos)
     const totalExtraIncome = state.transactions
-      .filter((t) => t.type === "income")
+      .filter((t) => t.type === "income" && (!t.advanced || t.advanced.type !== "variable_income" || t.advanced.operation !== "dividend"))
       .reduce((acc, t) => acc + t.amount, 0);
 
+    const totalIncome = state.salary + totalExtraIncome; // Fixed salary base + extra ordinário
+
+    // Despesas ordinárias (não avançadas, ou amortizações ordinárias)
     const confirmedExpenses = state.transactions
       .filter((t) => t.type === "expense" && t.confirmed !== false)
       .reduce((acc, t) => acc + t.amount, 0);
@@ -956,8 +976,91 @@ document.addEventListener("DOMContentLoaded", () => {
       .reduce((acc, t) => acc + t.amount, 0);
 
     const totalExpenses = confirmedExpenses + pendingExpenses;
-    const totalIncome = state.salary; // Fixed salary base
-    const balance = state.salary + totalExtraIncome - totalExpenses;
+
+    // --- Cálculo Patrimonial Avançado ---
+    let totalInvested = 0;
+    let totalLiabilities = 0;
+    let totalPassiveIncome = 0;
+
+    state.transactions.forEach(t => {
+      if (!t.advanced) return;
+      const adv = t.advanced;
+      const amount = Number(t.amount) || 0;
+
+      if (adv.type === "fixed_income") {
+        if (t.type === "expense") {
+          totalInvested += amount;
+        } else if (t.type === "income") {
+          totalInvested = Math.max(0, totalInvested - amount);
+        }
+      } else if (adv.type === "variable_income") {
+        if (adv.operation === "buy") {
+          totalInvested += amount;
+        } else if (adv.operation === "sell") {
+          totalInvested = Math.max(0, totalInvested - amount);
+        } else if (adv.operation === "dividend") {
+          totalPassiveIncome += amount;
+        }
+      } else if (adv.type === "financing") {
+        if (adv.operation === "financing") {
+          totalLiabilities += amount;
+        } else if (t.type === "expense") {
+          // 70% amortiza o principal, 30% são juros
+          totalLiabilities = Math.max(0, totalLiabilities - amount * 0.7);
+        }
+      } else if (adv.type === "consortium") {
+        if (t.type === "expense") {
+          // 80% vai para fundo acumulado (patrimônio), 20% taxas ordinárias
+          totalInvested += amount * 0.8;
+        }
+        if (adv.status === "contemplated") {
+          // Carta de crédito entra como ativo liberado e saldo devedor passivo
+          totalLiabilities += adv.value;
+        }
+      } else if (adv.type === "credit_loan") {
+        if (adv.operation === "take") {
+          totalLiabilities += amount;
+        } else if (adv.operation === "pay" || adv.operation === "extra_term" || adv.operation === "extra_value") {
+          totalLiabilities = Math.max(0, totalLiabilities - amount);
+        }
+      }
+    });
+
+    // --- Saldo das Carteiras e Cheque Especial ---
+    // Carteira Principal: salary + default income - default expense
+    const defaultTxs = state.transactions.filter(t => !t.walletId || t.walletId === "default");
+    const dInc = state.salary + defaultTxs.filter(t => t.type === "income").reduce((a, t) => a + t.amount, 0);
+    const dExp = defaultTxs.filter(t => t.type === "expense" && t.confirmed !== false).reduce((a, t) => a + t.amount, 0);
+    let defaultBalance = dInc - dExp;
+
+    let balance = defaultBalance;
+    let isAnyWalletInOverdraft = defaultBalance < 0;
+
+    state.wallets.forEach(w => {
+      const wTxs = state.transactions.filter(t => t.walletId == w.id);
+      const wInc = wTxs.filter(t => t.type === "income").reduce((a, t) => a + t.amount, 0);
+      const wExp = wTxs.filter(t => t.type === "expense" && t.confirmed !== false).reduce((a, t) => a + t.amount, 0);
+      const wBal = w.initial + wInc - wExp;
+      balance += wBal;
+      
+      if (wBal < 0) {
+        isAnyWalletInOverdraft = true;
+      }
+    });
+
+    if (balance < 0) {
+      isAnyWalletInOverdraft = true;
+    }
+
+    // Glow Vermelho no Card de Saldo
+    const balanceCard = document.querySelector(".stat-card.balance");
+    if (balanceCard) {
+      if (isAnyWalletInOverdraft) {
+        balanceCard.classList.add("overdraft-active");
+      } else {
+        balanceCard.classList.remove("overdraft-active");
+      }
+    }
 
     console.log("Dashboard update:", {
       salary: state.salary,
@@ -967,29 +1070,42 @@ document.addEventListener("DOMContentLoaded", () => {
       pendingExpenses,
       totalExpenses,
       balance,
+      totalInvested,
+      totalLiabilities,
+      totalPassiveIncome,
       transactionsCount: state.transactions.length
     });
+
     const elIncome = document.getElementById("total-income");
     const elExpenses = document.getElementById("total-expenses");
     const elBalance = document.getElementById("current-balance");
+    const elInvested = document.getElementById("invested-assets");
+    const elLiabilities = document.getElementById("liabilities-debts");
+    const elPassive = document.getElementById("passive-income");
 
     // Parse current displayed values for smooth transition
     const parseCurrency = (el) => {
+      if (!el) return 0;
       const text = el.textContent.replace(/[^\d,.-]/g, '').replace('.', '').replace(',', '.');
       return parseFloat(text) || 0;
     };
 
-    animateValue(elIncome, parseCurrency(elIncome), totalIncome);
-    animateValue(elExpenses, parseCurrency(elExpenses), totalExpenses);
-    animateValue(elBalance, parseCurrency(elBalance), balance);
-
-    elBalance.style.color =
-      balance >= 0 ? "var(--success)" : "var(--danger)";
+    if (elIncome) animateValue(elIncome, parseCurrency(elIncome), totalIncome);
+    if (elExpenses) animateValue(elExpenses, parseCurrency(elExpenses), totalExpenses);
+    if (elBalance) {
+      animateValue(elBalance, parseCurrency(elBalance), balance);
+      elBalance.style.color = balance >= 0 ? "var(--success)" : "var(--danger)";
+    }
+    if (elInvested) animateValue(elInvested, parseCurrency(elInvested), totalInvested);
+    if (elLiabilities) animateValue(elLiabilities, parseCurrency(elLiabilities), totalLiabilities);
+    if (elPassive) animateValue(elPassive, parseCurrency(elPassive), totalPassiveIncome);
 
     renderRecentTransactions();
     initMainChart();
     initPieChart();
-    initSimulation();
+    if (state.currentView === "simulations") {
+      initSimulation();
+    }
     renderBudgets();
     renderDashboardWallets();
   }
@@ -1350,6 +1466,9 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("expense-type").value = t.expenseType || 'variable';
     document.getElementById("category").value = t.category;
     document.getElementById("date").value = t.date;
+    
+    const walletSelect = document.getElementById("wallet");
+    if (walletSelect) walletSelect.value = t.walletId || "default";
 
     const installmentsGroup = document.getElementById("installments-group");
     if (t.expenseType === 'debt' && t.installments) {
@@ -1358,6 +1477,43 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("total-installments").value = t.installments.total;
     } else {
       if (installmentsGroup) installmentsGroup.style.display = "none";
+    }
+
+    // Repopulate Advanced Fields
+    if (t.advanced) {
+      if (advancedToggle) advancedToggle.checked = true;
+      if (advancedTypeSelect) advancedTypeSelect.value = t.advanced.type;
+      updateAdvancedFieldsUI();
+      
+      const advType = t.advanced.type;
+      if (advType === "fixed_income") {
+        document.getElementById("rf-subtype").value = t.advanced.subtype || "CDB";
+        document.getElementById("rf-index").value = t.advanced.index || "CDI";
+        document.getElementById("rf-rate").value = t.advanced.rate || "";
+        document.getElementById("rf-maturity").value = t.advanced.maturity || "";
+      } else if (advType === "variable_income") {
+        document.getElementById("rv-ticker").value = t.advanced.ticker || "";
+        document.getElementById("rv-operation").value = t.advanced.operation || "buy";
+        document.getElementById("rv-qty").value = t.advanced.qty || "";
+        document.getElementById("rv-price").value = t.advanced.price || "";
+      } else if (advType === "financing") {
+        document.getElementById("fin-operation").value = t.advanced.operation || "financing";
+        document.getElementById("fin-amort").value = t.advanced.amort || "SAC";
+        document.getElementById("fin-rate").value = t.advanced.rate || "";
+        document.getElementById("fin-term").value = t.advanced.term || "";
+      } else if (advType === "consortium") {
+        document.getElementById("cons-value").value = t.advanced.value || "";
+        document.getElementById("cons-admin").value = t.advanced.admin || "";
+        document.getElementById("cons-reserve").value = t.advanced.reserve || "";
+        document.getElementById("cons-status").value = t.advanced.status || "waiting";
+      } else if (advType === "credit_loan") {
+        document.getElementById("loan-op").value = t.advanced.operation || "take";
+        document.getElementById("loan-rate").value = t.advanced.rate || "";
+      }
+    } else {
+      if (advancedToggle) advancedToggle.checked = false;
+      updateAdvancedFieldsUI();
+      resetAdvancedInputs();
     }
 
     modal.classList.add("active");
@@ -1592,123 +1748,208 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // --- Simulation Logic ---
-  const simRange = document.getElementById("sim-expense-range");
-  const simLabel = document.getElementById("expense-label");
+// ===================================
+// SIMULATION LOGIC (CORRIGIDO)
+// ===================================
+const simRange = document.getElementById("sim-expense-range");
+const simLabel = document.getElementById("expense-label");
 
-  simRange.addEventListener("input", () => {
-    simLabel.textContent = `${simRange.value}%`;
-    initSimulation(); // Update automatically on slider move
-  });
+simRange.addEventListener("input", () => {
+  simLabel.textContent = `${simRange.value}%`;
+  initSimulation();
+});
+  
+function initSimulation() {
+  try {
+    console.log("🚀 initSimulation chamada com suporte a operações financeiras avançadas");
 
-  function initSimulation() {
-    try {
-      console.log("Iniciando simulação financeira...");
-      const canvas = document.getElementById("simulationChart");
-      if (!canvas) {
-        console.error("Elemento simulationChart não encontrado!");
-        return;
+    const canvas = document.getElementById("simulationChart");
+    if (!canvas) {
+      console.error("❌ Canvas não encontrado!");
+      return;
+    }
+
+    const existing = Chart.getChart(canvas);
+    if (existing) existing.destroy();
+    if (simChart) { simChart.destroy(); simChart = null; }
+
+    const ctx = canvas.getContext("2d");
+    const sliderValue = parseInt(simRange.value) || 0;
+    const multiplier = 1 + sliderValue / 100;
+
+    // --- 1. Calcular Saldos e KPIs Reais do Presente ---
+    let currentBalance = 0;
+    let currentInvested = 0;
+    let currentLiabilities = 0;
+    let currentPassive = 0;
+
+    // Carteira Principal
+    const defaultTxs = state.transactions.filter(t => !t.walletId || t.walletId === "default");
+    const dInc = state.salary + defaultTxs.filter(t => t.type === "income").reduce((a, t) => a + t.amount, 0);
+    const dExp = defaultTxs.filter(t => t.type === "expense" && t.confirmed !== false).reduce((a, t) => a + t.amount, 0);
+    currentBalance = dInc - dExp;
+
+    // Outras carteiras
+    state.wallets.forEach(w => {
+      const wTxs = state.transactions.filter(t => t.walletId == w.id);
+      const wInc = wTxs.filter(t => t.type === "income").reduce((a, t) => a + t.amount, 0);
+      const wExp = wTxs.filter(t => t.type === "expense" && t.confirmed !== false).reduce((a, t) => a + t.amount, 0);
+      currentBalance += (w.initial + wInc - wExp);
+    });
+
+    // KPIs Patrimoniais
+    state.transactions.forEach(t => {
+      if (!t.advanced) return;
+      const adv = t.advanced;
+      const amount = Number(t.amount) || 0;
+
+      if (adv.type === "fixed_income") {
+        if (t.type === "expense") currentInvested += amount;
+        else if (t.type === "income") currentInvested = Math.max(0, currentInvested - amount);
+      } else if (adv.type === "variable_income") {
+        if (adv.operation === "buy") currentInvested += amount;
+        else if (adv.operation === "sell") currentInvested = Math.max(0, currentInvested - amount);
+        else if (adv.operation === "dividend") currentPassive += amount;
+      } else if (adv.type === "financing") {
+        if (adv.operation === "financing") currentLiabilities += amount;
+        else if (t.type === "expense") currentLiabilities = Math.max(0, currentLiabilities - amount * 0.7);
+      } else if (adv.type === "consortium") {
+        if (t.type === "expense") currentInvested += amount * 0.8;
+        if (adv.status === "contemplated") currentLiabilities += adv.value;
+      } else if (adv.type === "credit_loan") {
+        if (adv.operation === "take") currentLiabilities += amount;
+        else if (adv.operation === "pay" || adv.operation === "extra_term" || adv.operation === "extra_value") {
+          currentLiabilities = Math.max(0, currentLiabilities - amount);
+        }
       }
-      
-      const ctx = canvas.getContext("2d");
-      if (simChart) {
-        simChart.destroy();
-        simChart = null;
+    });
+
+    // --- 2. Projeção de 12 Meses ---
+    // Renda ordinária mensal
+    const currentExtraIncome = state.transactions
+      .filter((t) => t.type === "income" && (!t.advanced || t.advanced.type !== "variable_income" || t.advanced.operation !== "dividend"))
+      .reduce((acc, t) => acc + t.amount, 0);
+    const monthlyIncome = state.salary + currentExtraIncome;
+
+    // Despesas ordinárias mensais
+    const confirmedExpenses = state.transactions
+      .filter((t) => t.type === "expense" && t.confirmed !== false && !t.advanced)
+      .reduce((acc, t) => acc + t.amount, 0);
+    const pendingExpenses = state.transactions
+      .filter((t) => t.type === "expense" && t.confirmed === false && !t.advanced)
+      .reduce((acc, t) => acc + t.amount, 0);
+    const monthlyExpenses = confirmedExpenses + pendingExpenses;
+
+    // Despesas de parcelas avançadas (financiamentos, empréstimos)
+    const monthlyDebtPayments = state.transactions
+      .filter(t => t.type === "expense" && t.advanced && (t.advanced.type === "financing" || t.advanced.type === "credit_loan"))
+      .reduce((acc, t) => acc + Number(t.amount || 0), 0);
+
+    let simBalance = currentBalance;
+    let simInvested = currentInvested;
+    let simLiabilities = currentLiabilities;
+    let simPassive = currentPassive;
+
+    const simulatedBalance = [];
+
+    for (let m = 1; m <= 12; m++) {
+      // Rentabilidade mensal dos ativos (0.85% ao mês pro rata CDB/Bolsa médio)
+      const investmentReturn = simInvested * 0.0085;
+      simInvested += investmentReturn;
+
+      // Renda passiva somada aos proventos diretos
+      const currentPassiveReturn = simPassive + investmentReturn;
+
+      // Juros incidentes sob passivos imobiliários / empréstimos (0.6% a.m. SAC/Price médio)
+      const debtInterest = simLiabilities * 0.006;
+      simLiabilities += debtInterest;
+      simLiabilities = Math.max(0, simLiabilities - monthlyDebtPayments);
+
+      // Despesa total no mês com base no slider (ordinário + parcelas financeiras)
+      const totalAdjustedExpense = (monthlyExpenses + monthlyDebtPayments) * multiplier;
+
+      // Fluxo de caixa líquido mensal
+      let netCashFlow = monthlyIncome + currentPassiveReturn - totalAdjustedExpense;
+
+      // Se adentrou o cheque especial simulado, incidir juros compostos de 8% a.m. (rotativo diário acumulado)
+      if (simBalance < 0) {
+        const overdraftInterest = Math.abs(simBalance) * 0.08;
+        netCashFlow -= overdraftInterest;
       }
 
-      const multiplier = 1 + (parseInt(simRange.value) || 0) / 100;
-      
-      // 1. Obter dados do mês corrente (state.transactions e state.salary)
-      const currentExtraIncome = (state.transactions || [])
-        .filter((t) => t.type === "income")
-        .reduce((acc, t) => acc + Number(t.amount || 0), 0);
-      const currentIncome = Number(state.salary || 0) + currentExtraIncome;
+      simBalance += netCashFlow;
+      simulatedBalance.push(Number(simBalance.toFixed(2)));
+    }
 
-      const currentExpenses = (state.transactions || [])
-        .filter((t) => t.type === "expense")
-        .reduce((acc, t) => acc + Number(t.amount || 0), 0);
+    // --- 3. Atualizar o Sumário Dinâmico ---
+    const totalAdjustedExpenseFirstMonth = (monthlyExpenses + monthlyDebtPayments) * multiplier;
+    const monthlyDiffFirstMonth = (monthlyIncome + simPassive) - totalAdjustedExpenseFirstMonth;
 
-      // 2. Aplicar o multiplicador do slider sobre o total de despesas do mês ativo
-      const totalAdjustedExpense = currentExpenses * multiplier;
-      const monthlyDiff = currentIncome - totalAdjustedExpense;
+    const summary = document.getElementById("simulation-summary");
+    if (summary) {
+      summary.style.display = "block";
+      document.getElementById("sim-avg-income").textContent = formatCurrency(monthlyIncome + simPassive);
+      document.getElementById("sim-adj-expense").textContent = formatCurrency(totalAdjustedExpenseFirstMonth);
+      document.getElementById("sim-monthly-diff").textContent = formatCurrency(monthlyDiffFirstMonth);
+      document.getElementById("sim-monthly-diff").style.color =
+        monthlyDiffFirstMonth >= 0 ? "var(--success)" : "var(--danger)";
+    }
 
-      const summary = document.getElementById("simulation-summary");
-      if (summary) {
-        summary.style.display = "block";
-        document.getElementById("sim-avg-income").textContent = formatCurrency(currentIncome);
-        document.getElementById("sim-adj-expense").textContent = formatCurrency(totalAdjustedExpense);
-        document.getElementById("sim-monthly-diff").textContent = formatCurrency(monthlyDiff);
-        document.getElementById("sim-monthly-diff").style.color = monthlyDiff >= 0 ? "var(--success)" : "var(--danger)";
-      }
+    const labels = ["Mês 1","Mês 2","Mês 3","Mês 4","Mês 5","Mês 6",
+                    "Mês 7","Mês 8","Mês 9","Mês 10","Mês 11","Mês 12"];
 
-      const labels = [
-        "Mês 1", "Mês 2", "Mês 3", "Mês 4", "Mês 5", "Mês 6",
-        "Mês 7", "Mês 8", "Mês 9", "Mês 10", "Mês 11", "Mês 12",
-      ];
-      
-      const simulatedBalance = [];
-      // Projetar lucro/prejuízo acumulado puro considerando o resultado mensal estipulado
-      for (let i = 0; i < 12; i++) {
-        simulatedBalance.push(monthlyDiff * (i + 1));
-      }
-
-      if (typeof Chart === 'undefined') {
-        console.error("Biblioteca Chart.js não carregada!");
-        showToast("Erro: Biblioteca de gráficos não carregada.", "error");
-        return;
-      }
-
-      simChart = new Chart(ctx, {
-        type: "bar",
-        data: {
-          labels: labels,
-          datasets: [
-            {
-              label: "Lucro Acumulado Projetado (R$)",
-              data: simulatedBalance,
-              backgroundColor: simulatedBalance.map((v) =>
-                v >= 0 ? "rgba(34, 197, 94, 0.4)" : "rgba(239, 68, 68, 0.4)",
-              ),
-              borderColor: simulatedBalance.map((v) =>
-                v >= 0 ? "#22c55e" : "#ef4444",
-              ),
-              borderWidth: 1,
-              borderRadius: 6,
-            },
-          ],
+    simChart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels,
+        datasets: [{
+          label: "Saldo Acumulado Projetado (R$)",
+          data: simulatedBalance,
+          backgroundColor: simulatedBalance.map(v =>
+            v >= 0 ? "rgba(34, 197, 94, 0.4)" : "rgba(239, 68, 68, 0.4)"
+          ),
+          borderColor: simulatedBalance.map(v =>
+            v >= 0 ? "#22c55e" : "#ef4444"
+          ),
+          borderWidth: 1,
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: context => ` Acumulado: ${formatCurrency(context.parsed.y)}`
+            }
+          }
         },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            tooltip: {
-              callbacks: {
-                label: (context) => ` Acumulado: ${formatCurrency(context.parsed.y)}`
-              }
+        scales: {
+          y: {
+            beginAtZero: false,
+            grid: { color: "rgba(255,255,255,0.05)" },
+            ticks: {
+              color: "#94a3b8",
+              callback: value => formatCurrency(value)
             }
           },
-          scales: {
-            y: {
-              beginAtZero: true,
-              grid: { color: "rgba(255,255,255,0.05)" },
-              ticks: { 
-                color: "#94a3b8",
-                callback: (value) => formatCurrency(value)
-              },
-            },
-            x: { 
-              grid: { display: false }, 
-              ticks: { color: "#94a3b8" } 
-            },
-          },
-        },
-      });
-      console.log("Simulação renderizada com sucesso.");
-    } catch (err) {
-      console.error("Erro na simulação:", err);
-      showToast("Não foi possível gerar a simulação. Verifique seus dados.", "error");
-    }
+          x: {
+            grid: { display: false },
+            ticks: { color: "#94a3b8" }
+          }
+        }
+      }
+    });
+
+    console.log("✅ Gráfico de simulação atualizado e criado com sucesso:", simChart);
+
+  } catch (err) {
+    console.error("❌ Erro na simulação:", err);
+    showToast("Não foi possível gerar a simulação.", "error");
   }
+}
+ 
 
   // ===================================
   // PROFILE MANAGEMENT
@@ -3031,8 +3272,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const type = document.getElementById("wallet-type").value;
     const color = document.getElementById("wallet-color").value;
     const initialBalance = parseFloat(document.getElementById("wallet-initial").value) || 0;
+    const overdraft = parseFloat(document.getElementById("wallet-overdraft").value) || 0;
 
-    const payload = { name, type, color, initial: initialBalance };
+    const payload = { name, type, color, initial: initialBalance, overdraft };
 
     try {
       showToast("Configurando carteira...", "info");
@@ -3072,6 +3314,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("wallet-type").value = w.type;
     document.getElementById("wallet-color").value = w.color;
     document.getElementById("wallet-initial").value = w.initial;
+    document.getElementById("wallet-overdraft").value = w.overdraft || 0;
 
     walletModal.classList.add("active");
   };
