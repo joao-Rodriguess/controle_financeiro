@@ -1972,9 +1972,15 @@ select:focus {
 
   .sidebar .logo span,
   .sidebar .nav-item span,
-  .sidebar .user-info,
   .sidebar .logo-icon {
     display: flex;
+  }
+
+  .sidebar .user-info {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 2px !important;
   }
 
   .sidebar .nav-item {
