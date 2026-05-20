@@ -537,13 +537,7 @@ document.addEventListener("DOMContentLoaded", () => {
     mobileOverlay.classList.remove("active");
   });
 
-  // Sidebar Profile Click -> go to profile
-  document.getElementById("sidebar-user-profile").addEventListener("click", () => {
-    triggerHaptic(15);
-    switchView("profile");
-    sidebar.classList.remove("mobile-active");
-    mobileOverlay.classList.remove("active");
-  });
+
 
   // --- Toggle Table Filters on Mobile ---
   const btnToggleFilters = document.getElementById("btn-toggle-filters");
