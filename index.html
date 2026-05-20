@@ -673,6 +673,10 @@
             <span class="toolbar-count" id="expenses-count">0 registros</span>
           </div>
           <div class="toolbar-right">
+            <button class="toolbar-btn" id="btn-toggle-filters" title="Filtrar Lançamentos" style="border-color: rgba(99, 102, 241, 0.3); color: var(--primary); display: inline-flex;">
+              <i data-lucide="filter" style="width:16px;height:16px;"></i>
+              <span>Filtrar</span>
+            </button>
             <button class="toolbar-btn toolbar-btn-print" id="btn-print-table" title="Imprimir Tabela">
               <i data-lucide="printer" style="width:16px;height:16px;"></i>
               <span>Imprimir</span>
@@ -1346,6 +1350,30 @@
       </div>
       </div>
     </div>
+    
+    <!-- Bottom Navigation Bar for Mobile -->
+    <nav class="bottom-nav" id="bottom-nav">
+      <button class="bottom-nav-item active" data-view="dashboard">
+        <i data-lucide="layout-dashboard"></i>
+        <span>Painel</span>
+      </button>
+      <button class="bottom-nav-item" data-view="expenses">
+        <i data-lucide="credit-card"></i>
+        <span>Lançar</span>
+      </button>
+      <button class="bottom-nav-item" data-view="simulations">
+        <i data-lucide="trending-up"></i>
+        <span>Simular</span>
+      </button>
+      <button class="bottom-nav-item" data-view="ai-advisor">
+        <i data-lucide="sparkles"></i>
+        <span>Consultor</span>
+      </button>
+      <button class="bottom-nav-item" id="bottom-nav-more">
+        <i data-lucide="menu"></i>
+        <span>Mais</span>
+      </button>
+    </nav>
   </div>
 
   <!-- Close Month Modal -->

@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
   lucide.createIcons();
 
   // ===================================
-  // MOBILE DEVICE DETECTION
+  // MOBILE DEVICE DETECTION & HAPTIC
   // ===================================
   const isMobileDevice = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent)
     || (navigator.maxTouchPoints > 1 && window.innerWidth < 1024);
@@ -14,6 +14,13 @@ document.addEventListener("DOMContentLoaded", () => {
   if (isMobileDevice) {
     document.body.classList.add('mobile-device');
   }
+
+  window.triggerHaptic = function(ms = 15) {
+    if (navigator.vibrate) {
+      navigator.vibrate(ms);
+    }
+  };
+  const triggerHaptic = window.triggerHaptic;
 
   // ===================================
   // TOAST NOTIFICATION SYSTEM
@@ -490,6 +497,7 @@ document.addEventListener("DOMContentLoaded", () => {
   navItems.forEach((item) => {
     item.addEventListener("click", () => {
       const viewId = item.getAttribute("data-view");
+      triggerHaptic(15);
       switchView(viewId);
 
       // Close sidebar on mobile after click
@@ -498,8 +506,28 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // --- Bottom Navigation Listeners ---
+  const bottomNavItems = document.querySelectorAll(".bottom-nav-item[data-view]");
+  bottomNavItems.forEach((item) => {
+    item.addEventListener("click", () => {
+      const viewId = item.getAttribute("data-view");
+      triggerHaptic(15);
+      switchView(viewId);
+    });
+  });
+
+  const bottomNavMore = document.getElementById("bottom-nav-more");
+  if (bottomNavMore) {
+    bottomNavMore.addEventListener("click", () => {
+      triggerHaptic(20);
+      sidebar.classList.add("mobile-active");
+      mobileOverlay.classList.add("active");
+    });
+  }
+
   // --- Mobile Menu Logic ---
   menuToggle.addEventListener("click", () => {
+    triggerHaptic(20);
     sidebar.classList.add("mobile-active");
     mobileOverlay.classList.add("active");
   });
@@ -511,15 +539,96 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Sidebar Profile Click -> go to profile
   document.getElementById("sidebar-user-profile").addEventListener("click", () => {
+    triggerHaptic(15);
     switchView("profile");
     sidebar.classList.remove("mobile-active");
     mobileOverlay.classList.remove("active");
   });
 
+  // --- Toggle Table Filters on Mobile ---
+  const btnToggleFilters = document.getElementById("btn-toggle-filters");
+  if (btnToggleFilters) {
+    btnToggleFilters.addEventListener("click", () => {
+      triggerHaptic(15);
+      const filterRow = document.querySelector(".filter-row");
+      if (filterRow) {
+        filterRow.classList.toggle("active");
+        btnToggleFilters.classList.toggle("active");
+        if (filterRow.classList.contains("active")) {
+          btnToggleFilters.style.backgroundColor = "rgba(99, 102, 241, 0.15)";
+          btnToggleFilters.style.borderColor = "var(--primary)";
+        } else {
+          btnToggleFilters.style.backgroundColor = "transparent";
+          btnToggleFilters.style.borderColor = "rgba(99, 102, 241, 0.3)";
+        }
+      }
+    });
+  }
+
+  // --- Swipe Gestures for Mobile View Swapping ---
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchEndX = 0;
+  let touchEndY = 0;
+
+  const mobileViews = ['dashboard', 'expenses', 'simulations', 'ai-advisor'];
+
+  document.addEventListener('touchstart', (e) => {
+    const ignoreSwipe = e.target.closest('canvas, input, select, textarea, button, .slider, [type="range"], .table-container, .ai-chat-messages');
+    if (ignoreSwipe) return;
+
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+
+  document.addEventListener('touchend', (e) => {
+    // Only swipe if logged in
+    const appVisible = appContainer && appContainer.style.display !== "none";
+    if (!appVisible) return;
+
+    const ignoreSwipe = e.target.closest('canvas, input, select, textarea, button, .slider, [type="range"], .table-container, .ai-chat-messages');
+    if (ignoreSwipe) return;
+
+    touchEndX = e.changedTouches[0].screenX;
+    touchEndY = e.changedTouches[0].screenY;
+
+    handleSwipe();
+  }, { passive: true });
+
+  function handleSwipe() {
+    const diffX = touchEndX - touchStartX;
+    const diffY = touchEndY - touchStartY;
+
+    if (Math.abs(diffX) > 110 && Math.abs(diffY) < 80) {
+      const currentIdx = mobileViews.indexOf(state.currentView);
+      if (currentIdx === -1) return;
+
+      let newView = null;
+      if (diffX < 0) {
+        if (currentIdx < mobileViews.length - 1) {
+          newView = mobileViews[currentIdx + 1];
+        }
+      } else {
+        if (currentIdx > 0) {
+          newView = mobileViews[currentIdx - 1];
+        }
+      }
+
+      if (newView) {
+        triggerHaptic(15);
+        switchView(newView);
+      }
+    }
+  }
+
   function switchView(viewId) {
-    navItems.forEach((nav) => nav.classList.remove("active"));
-    const navBtn = document.querySelector(`[data-view="${viewId}"]`);
-    if (navBtn) navBtn.classList.add("active");
+    // Sync all sidebar items and bottom nav items
+    document.querySelectorAll(`.nav-item, .bottom-nav-item`).forEach((nav) => {
+      nav.classList.remove("active");
+      if (nav.getAttribute("data-view") === viewId) {
+        nav.classList.add("active");
+      }
+    });
 
     views.forEach((view) => {
       view.classList.remove("active");

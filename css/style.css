@@ -3445,3 +3445,165 @@ select:focus-visible {
   color: #f87171 !important;
   text-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
 }
+
+/* ============================================
+   MOBILE INTERACTIVITY PREMIUM UPGRADES
+   ============================================ */
+
+/* iOS Style Bottom Navigation Bar */
+.bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 68px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 998;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 8px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.4);
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 500;
+  gap: 3px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  min-width: 62px;
+  cursor: pointer;
+}
+
+.bottom-nav-item i,
+.bottom-nav-item svg {
+  width: 20px;
+  height: 20px;
+  color: #94a3b8;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), color 0.25s ease;
+}
+
+.bottom-nav-item:focus {
+  outline: none;
+}
+
+.bottom-nav-item:active {
+  transform: scale(0.92);
+}
+
+.bottom-nav-item.active {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.bottom-nav-item.active i,
+.bottom-nav-item.active svg {
+  transform: translateY(-3px) scale(1.1);
+  color: var(--primary);
+}
+
+/* Modals to Bottom Sheets (Mobile iOS style) */
+@media (max-width: 768px) {
+  .bottom-nav {
+    display: flex;
+  }
+
+  .main-content {
+    padding-bottom: 90px !important;
+  }
+
+  .modal {
+    align-items: flex-end;
+    background: rgba(8, 10, 16, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .modal-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 24px 24px 0 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    max-height: 85vh !important;
+    margin-bottom: 0 !important;
+    padding: 2.2rem 1.25rem 2rem 1.25rem !important;
+    position: relative;
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+  }
+
+  /* IOS indicator pill */
+  .modal-content::before {
+    content: "";
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 44px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.16);
+    border-radius: 3px;
+  }
+
+  .modal.active .modal-content {
+    transform: translateY(0);
+  }
+
+  /* Prevent automatic iOS input zoom */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Collapsible table filters in mobile */
+  tr.filter-row {
+    display: none !important;
+    padding: 0.5rem !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    border-radius: 8px !important;
+    border: 1px dashed var(--border) !important;
+    margin-bottom: 1rem !important;
+  }
+
+  tr.filter-row.active {
+    display: block !important;
+  }
+
+  tr.filter-row th {
+    display: block !important;
+    width: 100% !important;
+    padding: 4px 0 !important;
+  }
+
+  tr.filter-row th input,
+  tr.filter-row th select {
+    width: 100% !important;
+    background: rgba(15, 23, 42, 0.8) !important;
+  }
+
+  tr.filter-row th button {
+    width: 100% !important;
+    padding: 8px !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+}
