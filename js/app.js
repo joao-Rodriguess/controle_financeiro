@@ -621,6 +621,155 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // --- Gestos Mobile Avançados: Swipe Sidebar e Dismiss Bottom Sheets ---
+  let edgeTouchStartX = 0;
+  let edgeTouchStartY = 0;
+  let isEdgeSwiping = false;
+
+  let sidebarTouchStartX = 0;
+  let sidebarTouchStartY = 0;
+  let isSidebarSwiping = false;
+
+  // Swipe para abrir sidebar a partir do canto esquerdo da tela
+  document.addEventListener('touchstart', (e) => {
+    if (window.innerWidth > 768) return;
+    const appVisible = appContainer && appContainer.style.display !== "none";
+    if (!appVisible) return;
+
+    const touch = e.touches[0];
+    const isSidebarActive = sidebar.classList.contains("mobile-active");
+
+    // Se a sidebar estiver fechada e o toque começar muito próximo da borda esquerda (< 40px)
+    if (!isSidebarActive && touch.clientX < 40) {
+      edgeTouchStartX = touch.clientX;
+      edgeTouchStartY = touch.clientY;
+      isEdgeSwiping = true;
+    } else if (isSidebarActive) {
+      // Se a sidebar estiver aberta, rastreia swipe left para fechar
+      sidebarTouchStartX = touch.clientX;
+      sidebarTouchStartY = touch.clientY;
+      isSidebarSwiping = true;
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchmove', (e) => {
+    if (window.innerWidth > 768) return;
+    const touch = e.touches[0];
+
+    if (isEdgeSwiping) {
+      const diffX = touch.clientX - edgeTouchStartX;
+      const diffY = touch.clientY - edgeTouchStartY;
+
+      // Se for um movimento predominantemente para a direita
+      if (diffX > 70 && Math.abs(diffY) < 40) {
+        triggerHaptic(20);
+        sidebar.classList.add("mobile-active");
+        mobileOverlay.classList.add("active");
+        isEdgeSwiping = false;
+      }
+    }
+
+    if (isSidebarSwiping) {
+      const diffX = touch.clientX - sidebarTouchStartX;
+      const diffY = touch.clientY - sidebarTouchStartY;
+
+      // Se for um movimento predominantemente para a esquerda
+      if (diffX < -70 && Math.abs(diffY) < 40) {
+        triggerHaptic(15);
+        sidebar.classList.remove("mobile-active");
+        mobileOverlay.classList.remove("active");
+        isSidebarSwiping = false;
+      }
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', () => {
+    isEdgeSwiping = false;
+    isSidebarSwiping = false;
+  }, { passive: true });
+
+  // Swipe Down to Dismiss para Modais (Bottom Sheets)
+  function initSwipeDownToDismiss() {
+    const modals = document.querySelectorAll(".modal");
+    modals.forEach((modal) => {
+      const content = modal.querySelector(".modal-content");
+      if (!content) return;
+
+      let startY = 0;
+      let currentY = 0;
+      let diffY = 0;
+      let isDragging = false;
+
+      // Inicia o arrasto
+      content.addEventListener("touchstart", (e) => {
+        if (window.innerWidth > 768) return;
+
+        // Ignora drag se o usuário tocar em elementos interativos
+        const ignoreDrag = e.target.closest("input, select, textarea, button, canvas, .slider, [type='range']");
+        if (ignoreDrag) return;
+
+        // Permite arrastar somente se estiver no topo do scroll interno do modal-content
+        if (content.scrollTop > 0) return;
+
+        startY = e.touches[0].clientY;
+        isDragging = true;
+        
+        // Desativa transições para resposta em tempo real imediata
+        content.style.transition = "none";
+      }, { passive: true });
+
+      // Move o Bottom Sheet
+      content.addEventListener("touchmove", (e) => {
+        if (!isDragging) return;
+
+        currentY = e.touches[0].clientY;
+        diffY = currentY - startY;
+
+        // Só arrasta para baixo
+        if (diffY > 0) {
+          if (e.cancelable) e.preventDefault();
+          content.style.transform = `translateY(${diffY}px)`;
+          
+          // Efeito visual de opacidade no backdrop proporcional ao arrasto
+          const opacityFraction = Math.max(0.2, 0.7 - (diffY / window.innerHeight));
+          modal.style.background = `rgba(8, 10, 16, ${opacityFraction})`;
+        } else {
+          content.style.transform = "";
+          diffY = 0;
+        }
+      }, { passive: false });
+
+      // Solta o Bottom Sheet
+      content.addEventListener("touchend", () => {
+        if (!isDragging) return;
+        isDragging = false;
+
+        // Restaura a transição do CSS
+        content.style.transition = "";
+        modal.style.background = ""; // Reseta o background para o estilo do CSS
+
+        if (diffY > 110) {
+          // Fecha o modal se arrastar mais de 110px para baixo
+          triggerHaptic(10);
+          modal.classList.remove("active");
+          
+          // Limpa o estilo inline transform após a animação de fechamento terminar
+          setTimeout(() => {
+            content.style.transform = "";
+          }, 350);
+        } else {
+          // Volta o modal para a posição original
+          content.style.transform = "";
+        }
+        
+        diffY = 0;
+      }, { passive: true });
+    });
+  }
+
+  // Inicializar o Swipe Down to Dismiss
+  setTimeout(initSwipeDownToDismiss, 1000);
+
   function switchView(viewId) {
     // Sync all sidebar items and bottom nav items
     document.querySelectorAll(`.nav-item, .bottom-nav-item`).forEach((nav) => {

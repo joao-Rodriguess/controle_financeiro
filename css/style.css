@@ -1477,7 +1477,7 @@ tr:last-child td {
 
 /* Modals */
 .modal {
-  display: none;
+  display: flex;
   position: fixed;
   top: 0;
   left: 0;
@@ -1488,10 +1488,16 @@ tr:last-child td {
   z-index: 1000;
   align-items: center;
   justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .modal.active {
-  display: flex;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .modal-content {
@@ -1503,6 +1509,12 @@ tr:last-child td {
   border: 1px solid var(--border);
   max-height: 90vh;
   overflow-y: auto;
+  transform: scale(0.95) translateY(10px);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.modal.active .modal-content {
+  transform: scale(1) translateY(0);
 }
 
 .modal-header {
